@@ -18,9 +18,6 @@ func (Hexa8) Dofs() fem.DofsFlag {
 	return fem.DofU
 }
 
-// MaxDegree returns the degree of the basis functions.
-func (Hexa8) MaxDegree() int { return 3 }
-
 // IsoparametricNodes returns the positions of the nodes relative to the origin of the element.
 func (Hexa8) IsoparametricNodes() []r3.Vec {
 	return []r3.Vec{

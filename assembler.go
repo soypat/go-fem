@@ -71,8 +71,8 @@ func (ga *GeneralAssembler) AddIsoparametric3s(elemT Isoparametric3, c Constitut
 	N := make([]*mat.VecDense, len(upg))
 	dN := make([]*mat.Dense, len(upg))
 	for ipg, pg := range upg {
-		N[ipg] = mat.NewVecDense(8, elemT.Basis(pg))
-		dN[ipg] = mat.NewDense(3, 8, elemT.BasisDiff(pg))
+		N[ipg] = mat.NewVecDense(NnodperElem, elemT.Basis(pg))
+		dN[ipg] = mat.NewDense(3, NnodperElem, elemT.BasisDiff(pg))
 	}
 	var jac r3.Mat
 	elemNodBacking := make([]float64, 3*NnodperElem)
