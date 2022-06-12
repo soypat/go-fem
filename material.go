@@ -2,6 +2,10 @@ package fem
 
 import "gonum.org/v1/gonum/mat"
 
+type Constituter interface {
+	Constitutive() mat.Matrix
+}
+
 // IsotropicMaterial represents a material with no preferential direction
 // respecting mechanical properties.
 // i.e: Room temperature steel. 200GPa, Poisson=0.3
