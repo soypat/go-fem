@@ -44,3 +44,6 @@ func (Tetra4) BasisDiff(v r3.Vec) []float64 {
 func (Tetra4) Quadrature() (positions []r3.Vec, weights []float64) {
 	return []r3.Vec{{X: .25, Y: .25, Z: .25}}, []float64{1}
 }
+
+// String returns string representation of element type.
+func (Tetra4) String() string { return "TETRA4" }

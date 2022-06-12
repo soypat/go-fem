@@ -25,12 +25,12 @@ func (Tetra10) IsoparametricNodes() []r3.Vec {
 		1: {X: 1, Y: 0, Z: 0},
 		2: {X: 0, Y: 1, Z: 0},
 		3: {X: 0, Y: 0, Z: 1},
-		4: {X: 1 / 2, Y: 0, Z: 0},
-		5: {X: 0, Y: 1 / 2, Z: 0},
-		6: {X: 0, Y: 0, Z: 1 / 2},
-		7: {X: 1 / 2, Y: 1 / 2, Z: 0},
-		8: {X: 0, Y: 1 / 2, Z: 1 / 2},
-		9: {X: 1 / 2, Y: 0, Z: 1 / 2},
+		4: {X: 0.5, Y: 0, Z: 0},
+		5: {X: 0, Y: 0.5, Z: 0},
+		6: {X: 0, Y: 0, Z: 0.5},
+		7: {X: 0.5, Y: 0.5, Z: 0},
+		8: {X: 0, Y: 0.5, Z: 0.5},
+		9: {X: 0.5, Y: 0, Z: 0.5},
 	}
 }
 
@@ -103,3 +103,6 @@ func (Tetra10) Quadrature() (positions []r3.Vec, weights []float64) {
 	weights = []float64{0.25, 0.25, 0.25, 0.25}
 	return positions, weights
 }
+
+// String returns string representation of element type.
+func (Tetra10) String() string { return "TETRA10" }

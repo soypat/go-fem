@@ -88,3 +88,6 @@ func (Hexa8) Quadrature() (positions []r3.Vec, weights []float64) {
 	positions, weights, _ = uniformGaussQuad(2, 2, 2)
 	return positions, weights
 }
+
+// String returns string representation of element type.
+func (Hexa8) String() string { return "HEXA8" }
