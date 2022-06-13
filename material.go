@@ -2,6 +2,10 @@ package fem
 
 import "gonum.org/v1/gonum/mat"
 
+// Constituter represents the homogenous properties of a medium
+// that can then be used to model solids or other continuous field problems.
+// For solids it returns the unmodified constitutive tensor (Generalized Hookes law).
+// The shear modulii should not be halved.
 type Constituter interface {
 	Constitutive() mat.Matrix
 }

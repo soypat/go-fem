@@ -3,6 +3,7 @@ package fem
 import (
 	"fmt"
 
+	"github.com/soypat/go-fem/internal/expmat"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r3"
 )
@@ -28,13 +29,15 @@ func NewGeneralAssembler(nodes []r3.Vec, modelDofs DofsFlag) *GeneralAssembler {
 // Ksolid returns the stiffness matrix of the solid.
 func (ga *GeneralAssembler) Ksolid() mat.Matrix { return &ga.ksolid }
 
-// AddIsoparametric3s adds isoparametric elements to the model's solid stiffness matrix.
-func (ga *GeneralAssembler) AddIsoparametric3s(elemT Isoparametric3, c Constituter, Nelem int, getElement func(i int) []int) error {
+// AddIsoparametric3 adds isoparametric elements to the model's solid stiffness matrix.
+// TODO: implement arbitrary orientation of solid properties for each isoparametric element.
+func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constituter, Nelem int, getElement func(i int) (elem []int, xC, yC r3.Vec)) error {
 	if elemT == nil || c == nil || getElement == nil {
-		panic("nil argument to AddIsoparametric3s") // This is very likely programmer error.
+		panic("nil argument to AddIsoparametric3") // This is very likely programmer error.
 	}
-	if !ga.dofs.Has(elemT.Dofs()) {
-		return fmt.Errorf("model dofs %s does not contain all element dofs %s", ga.dofs.String(), elemT.Dofs().String())
+	dofMapping, err := ga.DofMapping(elemT)
+	if err != nil {
+		return err
 	}
 	var (
 		// Number of nodes per element.
@@ -60,13 +63,6 @@ func (ga *GeneralAssembler) AddIsoparametric3s(elemT Isoparametric3, c Constitut
 	if r, c := C.Dims(); r != 6 || c != 6 {
 		return fmt.Errorf("expected constitutive matrix to be 6x6, got %dx%d", r, c)
 	}
-	// Create element to model dof mapping.
-	var dofMapping []int
-	for i := 0; i < ga.dofs.Count(); i++ {
-		if ga.dofs.Has(1<<i) && elemT.Dofs().Has(1<<i) {
-			dofMapping = append(dofMapping, i)
-		}
-	}
 	// Calculate form functions evaluated at integration points.
 	N := make([]*mat.VecDense, len(upg))
 	dN := make([]*mat.Dense, len(upg))
@@ -82,9 +78,12 @@ func (ga *GeneralAssembler) AddIsoparametric3s(elemT Isoparametric3, c Constitut
 	aux2 := mat.NewDense(NdofperElem, NdofperElem, nil)
 	for iele := 0; iele < Nelem; iele++ {
 		Ke.Zero()
-		element := getElement(iele)
+		element, x, y := getElement(iele)
 		if len(element) != NnodperElem {
 			return fmt.Errorf("element #%d of %d nodes expected to be of %d nodes", iele, len(element), NnodperElem)
+		}
+		if x != (r3.Vec{}) || y != (r3.Vec{}) {
+			return fmt.Errorf("arbitrary constitutive orientation not implemented yet")
 		}
 		storeElemNode(elemNodBacking, ga.nodes, element)
 		storeElemDofs(elemDofs, element, dofMapping, NmodelDofsPerNode)
@@ -128,6 +127,25 @@ func (ga *GeneralAssembler) AddIsoparametric3s(elemT Isoparametric3, c Constitut
 	return nil
 }
 
+// DofMapping creates element to model dof mapping. If model does not contain all argument elements
+// dofs then an error is returned.
+// The length of the slice returned is equal to the amount of dofs per element node.
+func (ga *GeneralAssembler) DofMapping(e Element) ([]int, error) {
+	edofs := e.Dofs()
+	if !ga.dofs.Has(edofs) {
+		return nil, fmt.Errorf("model dofs %s does not contain all element dofs %s", ga.dofs.String(), e.Dofs().String())
+	}
+	dofMapping := make([]int, edofs.Count())
+	idm := 0
+	for i := 0; i < ga.dofs.Count(); i++ {
+		if ga.dofs.Has(1<<i) && edofs.Has(1<<i) {
+			dofMapping[idm] = i
+			idm++
+		}
+	}
+	return dofMapping, nil
+}
+
 func storeElemNode(dst []float64, allNodes []r3.Vec, elem []int) {
 	if len(dst) != 3*len(elem) {
 		panic("bad length")
@@ -151,5 +169,106 @@ func storeElemDofs(dst, elem, dofmapping []int, modelDofsPerNode int) {
 		for j, dofoffset := range dofmapping {
 			dst[offset+j] = dofstart + dofoffset
 		}
+	}
+}
+
+func (ga *GeneralAssembler) AddElement3(elemT Element3, c Constituter, Nelem int, getElement func(i int) (e []int, x, y r3.Vec)) error {
+	if elemT == nil || c == nil || getElement == nil {
+		panic("nil argument to AddElement3") // This is very likely programmer error.
+	}
+	dofMapping, err := ga.DofMapping(elemT)
+	if err != nil {
+		return err
+	}
+	var (
+		// Number of dofs per element node.
+		Nde = len(dofMapping)
+		// Number of nodes per element.
+		NnodPerElem = elemT.LenNodes()
+		// Number of dofs per element.
+		NdofPerElem      = Nde * NnodPerElem
+		NdofPerNodeModel = ga.dofs.Count()
+	)
+	if ga.dofs>>6 != 0 {
+		panic("AddElement3 currently only handles 6 rigid body motion degrees of freedom")
+	}
+	var T3 r3.Mat
+	var rotator mat.Matrix = &expmat.SubMat{
+		Rix: dofMapping,
+		Cix: dofMapping,
+		M: blkDiag{
+			rep: 2 * NnodPerElem,
+			m:   &T3,
+		},
+	}
+
+	Ke := mat.NewDense(NdofPerElem, NdofPerElem, nil)
+	elemNodes := make([]r3.Vec, NnodPerElem)
+	elemDofs := make([]int, NdofPerElem)
+	for iele := 0; iele < Nelem; iele++ {
+		Ke.Zero()
+		element, x, y := getElement(iele)
+		if len(element) != NnodPerElem {
+			return fmt.Errorf("element #%d of %d nodes expected to be of %d nodes", iele, len(element), NnodPerElem)
+		}
+		for i, elnod := range element {
+			elemNodes[i] = ga.nodes[elnod]
+		}
+		err := elemT.CopyK(Ke, elemNodes)
+		if err != nil {
+			return err
+		}
+		// Rotate element stiffness matrix to match user input orientation.
+		orientX := r3.Unit(x)
+		orientY := r3.Unit(y)
+		orientZ := r3.Cross(orientX, orientY)
+		orientY = r3.Cross(orientZ, orientX) // Should be unit vector.
+		T3.Set(0, 0, orientX.X)
+		T3.Set(0, 1, orientX.Y)
+		T3.Set(0, 2, orientX.Z)
+		T3.Set(1, 0, orientY.X)
+		T3.Set(1, 1, orientY.Y)
+		T3.Set(1, 2, orientY.Z)
+		T3.Set(2, 0, orientZ.X)
+		T3.Set(2, 1, orientZ.Y)
+		T3.Set(2, 2, orientZ.Z)
+		Ke.Mul(rotator.T(), Ke)
+		Ke.Mul(Ke, rotator)
+		storeElemDofs(elemDofs, element, dofMapping, NdofPerNodeModel)
+		for i := 0; i < NdofPerElem; i++ {
+			ei := elemDofs[i]
+			for j := 0; j < NdofPerElem; j++ {
+				ej := elemDofs[j]
+				ga.ksolid.Set(ei, ej, ga.ksolid.At(ei, ej)+Ke.At(i, j))
+			}
+		}
+	}
+	return nil
+}
+
+type blkDiag struct {
+	rep int
+	m   mat.Matrix
+}
+
+func (b blkDiag) Dims() (int, int) {
+	r, c := b.m.Dims()
+	return r * b.rep, c * b.rep
+}
+
+func (b blkDiag) At(i, j int) float64 {
+	r, c := b.m.Dims()
+	iq := i / r
+	jq := j / c
+	if iq != jq {
+		return 0
+	}
+	return b.m.At(i%r, j%c)
+}
+
+func (b blkDiag) T() mat.Matrix {
+	return blkDiag{
+		rep: b.rep,
+		m:   b.m.T(),
 	}
 }

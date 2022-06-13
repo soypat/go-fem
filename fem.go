@@ -3,14 +3,20 @@ package fem
 import (
 	"strconv"
 
+	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
-// Isoparametric3 is a 3D element that employs the isoparametric formulation.
-type Isoparametric3 interface {
+type Element interface {
 	// LenNodes returns the number of nodes in the element.
 	LenNodes() int
+	// Dofs returns the degrees of freedom corresponding to each of the element's nodes.
+	Dofs() DofsFlag
+}
 
+// Isoparametric3 is a 3D element that employs the isoparametric formulation.
+type Isoparametric3 interface {
+	Element
 	// BasisNodes returns the positions of the nodes relative to the origin
 	// of the element. Returned slice is of length LenNodes.
 	IsoparametricNodes() []r3.Vec
@@ -34,9 +40,12 @@ type Isoparametric3 interface {
 	//  dN := mat.NewDense(3, e.LenNodes(), e.BasisDiff(v))
 	// Returned slice is of length LenNodes*3.
 	BasisDiff(r3.Vec) []float64
+}
 
-	// Dofs returns the degrees of freedom corresponding to each of the element's nodes.
-	Dofs() DofsFlag
+type Element3 interface {
+	Element
+	CopyK(dst *mat.Dense, elementNodes []r3.Vec) error
+	SetConstitutive(c Constituter) error
 }
 
 type DofsFlag int

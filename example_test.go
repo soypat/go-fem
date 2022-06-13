@@ -23,8 +23,8 @@ func ExampleGeneralAssembler() {
 		{0, 1, 2, 3}, // one single element.
 	}
 	ga := fem.NewGeneralAssembler(nod, fem.DofU)
-	err := ga.AddIsoparametric3s(elemType, steel, len(elems), func(i int) []int {
-		return elems[i]
+	err := ga.AddIsoparametric3(elemType, steel, len(elems), func(i int) ([]int, r3.Vec, r3.Vec) {
+		return elems[i], r3.Vec{}, r3.Vec{}
 	})
 	if err != nil {
 		panic(err)

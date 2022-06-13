@@ -1,7 +1,18 @@
 # go-fem
 Go packages for finite element analysis/methods.
 
+#### Roadmap
+* ~~3D Isoparametric element assembly.~~
+* 2D Isoparametric element assembly.
+* Shell and plate element assembly.
+* Arbitrary element assembly.
+* Better define Element3 API.
+* Add constraints assembly.
+  - Lagrange Multipliers or Penalty method.
+* Stiffness matrix utility functions for better conditioning and troubleshooting.
+* Stress extraction from displacements.
 
+#### Example
 ```go
 package main
 

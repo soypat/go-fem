@@ -18,8 +18,8 @@ func main() {
 	nodes, elem := feaModel()
 	ga := fem.NewGeneralAssembler(nodes, fem.DofU)
 	tstart := time.Now()
-	err := ga.AddIsoparametric3s(elements.Hexa8{}, fem.IsotropicMaterial{E: 4.8e3, Poisson: 0.34}, len(elem), func(i int) []int {
-		return elem[i][:]
+	err := ga.AddIsoparametric3(elements.Hexa8{}, fem.IsotropicMaterial{E: 4.8e3, Poisson: 0.34}, len(elem), func(i int) ([]int, r3.Vec, r3.Vec) {
+		return elem[i][:], r3.Vec{}, r3.Vec{}
 	})
 
 	if err != nil {
