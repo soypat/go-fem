@@ -13,7 +13,7 @@ type Tetra10 struct{}
 var _ fem.Isoparametric3 = Tetra10{}
 
 func (Tetra10) Dofs() fem.DofsFlag {
-	return fem.DofU
+	return fem.DofPos
 }
 
 func (Tetra10) LenNodes() int { return 10 }

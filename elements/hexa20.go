@@ -16,7 +16,7 @@ func (Hexa20) LenNodes() int { return 20 }
 
 // Dofs returns the set dofs for the element's nodes.
 func (Hexa20) Dofs() fem.DofsFlag {
-	return fem.DofU
+	return fem.DofPos
 }
 
 // IsoparametricNodes returns the positions of the nodes relative to the origin of the element.

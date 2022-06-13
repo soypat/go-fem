@@ -15,7 +15,7 @@ var _ fem.Isoparametric3 = Hexa8{}
 func (Hexa8) LenNodes() int { return 8 }
 
 func (Hexa8) Dofs() fem.DofsFlag {
-	return fem.DofU
+	return fem.DofPos
 }
 
 // IsoparametricNodes returns the positions of the nodes relative to the origin of the element.

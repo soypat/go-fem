@@ -54,7 +54,7 @@ func gaussQuad1D(n int) (x, w []float64, err error) {
 	case 3:
 		const a = sqrt3 / sqrt5
 		x = []float64{-a, 0, a}
-		w = []float64{5 / 9, 8 / 9, 5 / 9}
+		w = []float64{5.0 / 9.0, 8.0 / 9.0, 5.0 / 9.0}
 
 	case 4:
 		const (
@@ -80,7 +80,7 @@ func gaussQuad1D(n int) (x, w []float64, err error) {
 		wa := (322 + 13*sqrt70) / 900
 		wb := (322 - 13*sqrt70) / 900
 		x = []float64{-b, -a, 0, a, b}
-		w = []float64{wb, wa, 128 / 225, wa, wb}
+		w = []float64{wb, wa, 128.0 / 225.0, wa, wb}
 
 	case 6:
 		const (

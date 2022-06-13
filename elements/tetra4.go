@@ -12,7 +12,7 @@ type Tetra4 struct{}
 var _ fem.Isoparametric3 = Tetra4{}
 
 func (Tetra4) Dofs() fem.DofsFlag {
-	return fem.DofU
+	return fem.DofPos
 }
 
 func (Tetra4) LenNodes() int { return 4 }

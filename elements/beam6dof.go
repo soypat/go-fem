@@ -24,9 +24,15 @@ type Beam2dof6 struct {
 	g float64
 }
 
-func (b *Beam2dof6) CopyK(dst *mat.Dense, v []r3.Vec) {
+var _ fem.Element3 = (*Beam2dof6)(nil)
+
+func (b *Beam2dof6) LenNodes() int { return 2 }
+
+func (b *Beam2dof6) Dofs() fem.DofsFlag { return fem.Dof6 }
+
+func (b *Beam2dof6) CopyK(dst *mat.Dense, v []r3.Vec) error {
 	if len(v) != 2 {
-		panic("bad length")
+		return errors.New("need 2 nodes")
 	}
 	L := r3.Norm(r3.Sub(v[0], v[1]))
 	E := b.e
@@ -60,6 +66,7 @@ func (b *Beam2dof6) CopyK(dst *mat.Dense, v []r3.Vec) {
 			0, Y2, 0, 0, 0, Y4, 0, -Y2, 0, 0, 0, Y3,
 		},
 	})
+	return nil
 }
 
 func (b *Beam2dof6) SetConstitutive(c fem.Constituter) error {
@@ -67,10 +74,10 @@ func (b *Beam2dof6) SetConstitutive(c fem.Constituter) error {
 	if err != nil {
 		return errors.New("invalid contitutive parameters: " + err.Error())
 	}
-	b.e = sp.Ex
+	// TODO(soypat): Better way to construct beam than with standard two values?
+	// Probably incorrect for non-isotropic materials
+	b.e = (sp.Ex + sp.Ey + sp.Ez) / 3
 	b.g = (sp.Gxy + sp.Gxz + sp.Gyz) / 3
-	// nu := (b.sp.Vxy + b.sp.Vxz + b.sp.Vyz) / 3
-	// G := E / (2 + 2*nu)
 	return nil
 }
 
@@ -98,7 +105,6 @@ func extractSolidProps(c fem.Constituter) (solidProperties, error) {
 	sp.Vxy = -sp.Ey * s.At(0, 1)
 	sp.Vxz = -sp.Ez * s.At(0, 2)
 	sp.Vyz = -sp.Ez * s.At(1, 2)
-	// TODO(soypat): Define if using engineering compliance or real compliance.
 	sp.Gyz = 1 / s.At(3, 3)
 	sp.Gxz = 1 / s.At(4, 4)
 	sp.Gxy = 1 / s.At(5, 5)

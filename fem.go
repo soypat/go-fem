@@ -48,27 +48,30 @@ type Element3 interface {
 	SetConstitutive(c Constituter) error
 }
 
-type DofsFlag int
+// DofsFlag holds bitwise information of degrees of freedom.
+type DofsFlag uint16
 
 const (
-	// DofPosX corresponds to X position degree of freedom.
+	// DofPosX corresponds to X position degree of freedom (0).
 	DofPosX DofsFlag = 1 << iota
-	// DofPosY corresponds to Y position degree of freedom.
+	// DofPosY corresponds to Y position degree of freedom (1).
 	DofPosY
-	// DofPosZ corresponds to Z position degree of freedom.
+	// DofPosZ corresponds to Z position degree of freedom (2).
 	DofPosZ
-	// DofRotX corresponds to rotational degree of freedom about X axis.
+	// DofRotX corresponds to rotational degree of freedom about X axis (3).
 	DofRotX
-	// DofRotY corresponds to rotational degree of freedom about Y axis.
+	// DofRotY corresponds to rotational degree of freedom about Y axis (4).
 	DofRotY
-	// DofRotZ corresponds to rotational degree of freedom about Z axis.
+	// DofRotZ corresponds to rotational degree of freedom about Z axis (5).
 	DofRotZ
 	maxDofsPerNode = iota
 )
 
 // Common degree of freedom flag definitions.
 const (
-	DofU = DofPosX | DofPosY | DofPosZ
+	DofPos = DofPosX | DofPosY | DofPosZ
+	DofRot = DofRotX | DofRotY | DofRotZ
+	Dof6   = DofPos | DofRot
 )
 
 // Count returns the number of dofs set in d.
