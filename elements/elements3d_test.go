@@ -74,7 +74,6 @@ func TestBasisDiff(t *testing.T) {
 				pym := r3.Sub(p, iy)
 				ffym := element.Basis(pym)
 				ffyp := element.Basis(pyp)
-				// Differentiate and store in ffxp.
 				floats.Sub(ffyp, ffym)
 				floats.Scale(1/h, ffyp)
 				if !floats.EqualApprox(got[element.LenNodes():element.LenNodes()*2], ffyp, tol) {
@@ -87,7 +86,6 @@ func TestBasisDiff(t *testing.T) {
 				pzm := r3.Sub(p, iz)
 				ffzm := element.Basis(pzm)
 				ffzp := element.Basis(pzp)
-				// Differentiate and store in ffxp.
 				floats.Sub(ffzp, ffzm)
 				floats.Scale(1/h, ffzp)
 				if !floats.EqualApprox(got[2*element.LenNodes():], ffzp, tol) {

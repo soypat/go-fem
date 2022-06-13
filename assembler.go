@@ -11,7 +11,7 @@ import (
 // GeneralAssembler is a general purpose stiffness matrix assembler.
 type GeneralAssembler struct {
 	// Stiffness matrix of modelled solid.
-	ksolid mat.Dense
+	ksolid expmat.Sparse
 	dofs   DofsFlag
 	nodes  []r3.Vec
 }
@@ -20,14 +20,14 @@ type GeneralAssembler struct {
 func NewGeneralAssembler(nodes []r3.Vec, modelDofs DofsFlag) *GeneralAssembler {
 	totalDofs := len(nodes) * modelDofs.Count()
 	return &GeneralAssembler{
-		ksolid: *mat.NewDense(totalDofs, totalDofs, nil),
+		ksolid: *expmat.NewSparse(totalDofs, totalDofs),
 		dofs:   modelDofs,
 		nodes:  nodes,
 	}
 }
 
 // Ksolid returns the stiffness matrix of the solid.
-func (ga *GeneralAssembler) Ksolid() mat.Matrix { return &ga.ksolid }
+func (ga *GeneralAssembler) Ksolid() *expmat.Sparse { return &ga.ksolid }
 
 // AddIsoparametric3 adds isoparametric elements to the model's solid stiffness matrix.
 // TODO: implement arbitrary orientation of solid properties for each isoparametric element.

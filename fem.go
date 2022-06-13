@@ -83,7 +83,8 @@ func (d DofsFlag) Count() int {
 	return c
 }
 
-// Has returns true if d has all of q's dofs set.
+// Has returns true if d has all of q's dofs set. It returns false if
+// q has a dof set that is not set in d.
 func (d DofsFlag) Has(q DofsFlag) bool {
 	return d&q == q
 }
