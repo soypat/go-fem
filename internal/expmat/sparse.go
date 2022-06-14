@@ -8,6 +8,8 @@ type Sparse struct {
 	m    map[[2]int]float64
 }
 
+var _ mat.Matrix = (*Sparse)(nil)
+
 func (s *Sparse) At(i, j int) float64 {
 	if i >= s.r {
 		panic(mat.ErrRowAccess)
@@ -23,7 +25,12 @@ func (s *Sparse) Set(i, j int, v float64) {
 	} else if j >= s.c {
 		panic(mat.ErrColAccess)
 	}
-	s.m[[2]int{i, j}] = v
+	ix := [2]int{i, j}
+	if v != 0 {
+		s.m[ix] = v
+	} else {
+		delete(s.m, ix)
+	}
 }
 
 func (s *Sparse) Dims() (int, int) {
@@ -41,6 +48,18 @@ func NewSparse(r, c int) *Sparse {
 	return &s
 }
 
+func (s *Sparse) Resize(r, c int) {
+	if r < s.r || c < s.c {
+		for k := range s.m {
+			if k[0] >= r || k[1] >= c {
+				delete(s.m, k)
+			}
+		}
+	}
+	s.r = r
+	s.c = c
+}
+
 func (s *Sparse) AddData(ixs, jxs []int, data []float64) {
 	if len(ixs) != len(jxs) || len(data) != len(ixs) {
 		panic("length of arguments must be equal")
@@ -55,6 +74,9 @@ func (s *Sparse) AddData(ixs, jxs []int, data []float64) {
 			panic(mat.ErrRowAccess)
 		} else if jx >= s.c {
 			panic(mat.ErrColAccess)
+		}
+		if v == 0 {
+			continue
 		}
 		idx := [2]int{ix, jx}
 		s.m[idx] += v

@@ -90,6 +90,12 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 		for ipg := range upg {
 			dNi := dN[ipg]
 			jac.Mul(dNi, elemNod)
+			dJac := jac.Det()
+			if dJac < 0 {
+				// return fmt.Errorf("negative determinant of jacobian of element #%d, Check node ordering", iele)
+			} else if dJac < 1e-12 {
+				return fmt.Errorf("zero determinant of jacobian of element #%d, Check element shape for bad aspect ratio", iele)
+			}
 			err := dNxyz.Solve(&jac, dNi)
 			if err != nil {
 				return fmt.Errorf("error calculating element #%d form factor: %s", iele, err)
@@ -112,7 +118,7 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 			// Ke = Ke + Bᵀ*C*B * weight*det(J)
 			aux1.Mul(B.T(), C)
 			aux2.Mul(aux1, B)
-			aux2.Scale(jac.Det()*wpg[ipg], aux2)
+			aux2.Scale(dJac*wpg[ipg], aux2)
 			Ke.Add(Ke, aux2)
 		}
 		// Ke is a matrix of reduced dof size.

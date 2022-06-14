@@ -1,3 +1,9 @@
+github.com/soypat/manigold v0.0.0-20220614020708-5ae46c557524 h1:WyjgZ88go7kmF8O1u0tsyG4cXBTB1LHQBz+pyQ8KEL4=
+github.com/soypat/manigold v0.0.0-20220614020708-5ae46c557524/go.mod h1:nPLT4UYxojCilnD+2v7ExgBN4LRMHkRZxjfl+uo6210=
+github.com/soypat/manigold v0.0.0-20220614033706-5e8392526833 h1:ZWRGCGBOKZ+qEFVTJixm85qONgFpMbffwQlFgdCmqAc=
+github.com/soypat/manigold v0.0.0-20220614033706-5e8392526833/go.mod h1:nPLT4UYxojCilnD+2v7ExgBN4LRMHkRZxjfl+uo6210=
+github.com/soypat/manigold v0.0.0-20220614041313-be1a248c153a h1:iA5Eqpp79EssPZmsp1y6la7FvJkYlkZq6MYZmYRq/0g=
+github.com/soypat/manigold v0.0.0-20220614041313-be1a248c153a/go.mod h1:nPLT4UYxojCilnD+2v7ExgBN4LRMHkRZxjfl+uo6210=
 golang.org/x/exp v0.0.0-20191002040644-a1355ae1e2c3 h1:n9HxLrNxWWtEb1cA950nuEEj3QnKbtsCJ6KjcgisNUs=
 gonum.org/v1/gonum v0.11.0 h1:f1IJhK4Km5tBJmaiJXtk/PkL4cdVX6J+tGiM187uT5E=
 gonum.org/v1/gonum v0.11.0/go.mod h1:fSG4YDCxxUZQJ7rKsQrj0gMOg00Il0Z96/qMA4bVQhA=
