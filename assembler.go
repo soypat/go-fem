@@ -1,6 +1,7 @@
 package fem
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/soypat/go-fem/internal/expmat"
@@ -125,36 +126,25 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 			Ke.Add(Ke, aux2)
 		}
 		offset := iele * NvalPerElem
-		for i := 0; i < NdofperElem; i++ {
-			ei := elemDofs[i]
-			for j := 0; j < NdofperElem; j++ {
-				ej := elemDofs[j]
-
-				ix := offset + i*NdofperElem + j
-				I[ix] = ei
-				J[ix] = ej
-				V[ix] = Ke.At(i, j)
-				//ga.ksolid.Set(ei, ej, ga.ksolid.At(ei, ej)+Ke.At(i, j))
-			}
-		}
-		continue
-		// Ke is a matrix of reduced dof size.
-		for i := 0; i < NdofperElem; i++ {
-			ei := elemDofs[i]
-			for j := 0; j < NdofperElem; j++ {
-				ej := elemDofs[j]
-				ga.ksolid.Set(ei, ej, ga.ksolid.At(ei, ej)+Ke.At(i, j))
-			}
-		}
+		assembleElement(V[offset:], I[offset:], J[offset:], elemDofs, Ke)
 	}
 	ga.ksolid.AddData(I, J, V)
 	return nil
 }
 
-func assembleIJV(V []float64, I, J, elemDofs []int, Ke *mat.Dense) {
-	r, c := Ke.Dims()
-	for i, iv := range I {
-		copy()
+// assembleElement stores the element stiffness matrix Ke into V data for the corresponding
+// I and J indices to the global stiffness matrix.
+func assembleElement(V []float64, I, J, elemDofs []int, Ke *mat.Dense) {
+	_, c := Ke.Dims()
+	for i, ei := range elemDofs {
+		ic := i * c
+		row := Ke.RawRowView(i)
+		copy(V[ic:], row)
+		copy(J[ic:], elemDofs)
+		for j := range elemDofs {
+			ix := ic + j
+			I[ix] = ei
+		}
 	}
 }
 
@@ -239,6 +229,9 @@ func (ga *GeneralAssembler) AddElement3(elemT Element3, c Constituter, Nelem int
 	for iele := 0; iele < Nelem; iele++ {
 		Ke.Zero()
 		element, x, y := getElement(iele)
+		if x != (r3.Vec{}) && y != (r3.Vec{}) {
+			return errors.New("element orientation not supported yet")
+		}
 		if len(element) != NnodPerElem {
 			return fmt.Errorf("element #%d of %d nodes expected to be of %d nodes", iele, len(element), NnodPerElem)
 		}
@@ -249,22 +242,25 @@ func (ga *GeneralAssembler) AddElement3(elemT Element3, c Constituter, Nelem int
 		if err != nil {
 			return err
 		}
-		// Rotate element stiffness matrix to match user input orientation.
-		orientX := r3.Unit(x)
-		orientY := r3.Unit(y)
-		orientZ := r3.Cross(orientX, orientY)
-		orientY = r3.Cross(orientZ, orientX) // Should be unit vector.
-		T3.Set(0, 0, orientX.X)
-		T3.Set(0, 1, orientX.Y)
-		T3.Set(0, 2, orientX.Z)
-		T3.Set(1, 0, orientY.X)
-		T3.Set(1, 1, orientY.Y)
-		T3.Set(1, 2, orientY.Z)
-		T3.Set(2, 0, orientZ.X)
-		T3.Set(2, 1, orientZ.Y)
-		T3.Set(2, 2, orientZ.Z)
-		Ke.Mul(rotator.T(), Ke)
-		Ke.Mul(Ke, rotator)
+
+		if x != (r3.Vec{}) && y != (r3.Vec{}) {
+			// Rotate element stiffness matrix to match user input orientation.
+			orientX := r3.Unit(x)
+			orientY := r3.Unit(y)
+			orientZ := r3.Cross(orientX, orientY)
+			orientY = r3.Cross(orientZ, orientX) // Should be unit vector.
+			T3.Set(0, 0, orientX.X)
+			T3.Set(0, 1, orientX.Y)
+			T3.Set(0, 2, orientX.Z)
+			T3.Set(1, 0, orientY.X)
+			T3.Set(1, 1, orientY.Y)
+			T3.Set(1, 2, orientY.Z)
+			T3.Set(2, 0, orientZ.X)
+			T3.Set(2, 1, orientZ.Y)
+			T3.Set(2, 2, orientZ.Z)
+			Ke.Mul(rotator.T(), Ke)
+			Ke.Mul(Ke, rotator)
+		}
 		storeElemDofs(elemDofs, element, dofMapping, NdofPerNodeModel)
 		for i := 0; i < NdofPerElem; i++ {
 			ei := elemDofs[i]
