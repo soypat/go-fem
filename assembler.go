@@ -76,6 +76,9 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 	elemNod := mat.NewDense(NnodperElem, 3, elemNodBacking)
 	aux1 := mat.NewDense(NdofperElem, 6, nil)
 	aux2 := mat.NewDense(NdofperElem, NdofperElem, nil)
+	NvalPerElem := NdofperElem * NdofperElem
+	I, J := make([]int, NvalPerElem*Nelem), make([]int, NvalPerElem*Nelem)
+	V := make([]float64, NvalPerElem*Nelem)
 	for iele := 0; iele < Nelem; iele++ {
 		Ke.Zero()
 		element, x, y := getElement(iele)
@@ -121,6 +124,20 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 			aux2.Scale(dJac*wpg[ipg], aux2)
 			Ke.Add(Ke, aux2)
 		}
+		offset := iele * NvalPerElem
+		for i := 0; i < NdofperElem; i++ {
+			ei := elemDofs[i]
+			for j := 0; j < NdofperElem; j++ {
+				ej := elemDofs[j]
+
+				ix := offset + i*NdofperElem + j
+				I[ix] = ei
+				J[ix] = ej
+				V[ix] = Ke.At(i, j)
+				//ga.ksolid.Set(ei, ej, ga.ksolid.At(ei, ej)+Ke.At(i, j))
+			}
+		}
+		continue
 		// Ke is a matrix of reduced dof size.
 		for i := 0; i < NdofperElem; i++ {
 			ei := elemDofs[i]
@@ -130,7 +147,15 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 			}
 		}
 	}
+	ga.ksolid.AddData(I, J, V)
 	return nil
+}
+
+func assembleIJV(V []float64, I, J, elemDofs []int, Ke *mat.Dense) {
+	r, c := Ke.Dims()
+	for i, iv := range I {
+		copy()
+	}
 }
 
 // DofMapping creates element to model dof mapping. If model does not contain all argument elements
@@ -264,6 +289,9 @@ func (b blkDiag) Dims() (int, int) {
 
 func (b blkDiag) At(i, j int) float64 {
 	r, c := b.m.Dims()
+	if i > b.rep*r || j > b.rep*c {
+		panic("bad access")
+	}
 	iq := i / r
 	jq := j / c
 	if iq != jq {
