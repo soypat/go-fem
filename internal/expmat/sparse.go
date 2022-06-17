@@ -4,8 +4,8 @@ import "gonum.org/v1/gonum/mat"
 
 // Sparse is experimental sparse matrix.
 type Sparse struct {
-	r, c int
 	m    map[[2]int]float64
+	r, c int
 }
 
 var _ mat.Matrix = (*Sparse)(nil)
@@ -65,9 +65,12 @@ func (s *Sparse) AddData(ixs, jxs []int, data []float64) {
 		panic("length of arguments must be equal")
 	}
 	if len(s.m) == 0 {
-		s.m = make(map[[2]int]float64, len(data)/8)
+		s.m = make(map[[2]int]float64, len(data)/16)
 	}
 	for i, v := range data {
+		if v == 0 {
+			continue
+		}
 		ix := ixs[i]
 		jx := jxs[i]
 		if ix >= s.r {
@@ -75,9 +78,7 @@ func (s *Sparse) AddData(ixs, jxs []int, data []float64) {
 		} else if jx >= s.c {
 			panic(mat.ErrColAccess)
 		}
-		if v == 0 {
-			continue
-		}
+
 		idx := [2]int{ix, jx}
 		s.m[idx] += v
 	}
