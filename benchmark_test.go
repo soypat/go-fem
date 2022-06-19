@@ -30,9 +30,11 @@ func BenchmarkTetra4Assembly(b *testing.B) {
 	elemT := elements.Tetra4{}
 	material := fem.IsotropicMaterial{E: 200e9, Poisson: 0.3}
 	for _, div := range []float64{2, 8, 16, 32, 48} {
+		b.StopTimer()
 		bcc := tetra.MakeBCC(box, dim/div)
 		nodes, tetras := bcc.MeshTetraBCC()
 		totalDofs := len(nodes) * 3
+		b.StartTimer()
 		b.Run(fmt.Sprintf("%d dofs, %d elems", totalDofs, len(tetras)), func(b *testing.B) {
 			var ga *fem.GeneralAssembler
 			for i := 0; i < b.N; i++ {

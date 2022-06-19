@@ -6,64 +6,6 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-func BooleanSetVec(dst *mat.VecDense, src mat.Vector, inv bool, br []bool) {
-	if len(br) != dst.Len() {
-		panic("bad []bool len. must match dst")
-	}
-	sum := 0
-	for i := range br {
-		if br[i] != inv {
-			sum++
-		}
-	}
-	if sum != src.Len() {
-		panic("amount of true values in br must match length of src")
-	}
-	sum = 0
-	for i := range br {
-		if br[i] != inv {
-			dst.SetVec(i, src.AtVec(sum))
-			sum++
-		}
-	}
-}
-
-func BooleanIndexing(m mat.Matrix, inv bool, br, bc []bool) *SubMat {
-	r, c := m.Dims()
-	if len(br) != r || len(bc) != c {
-		panic("bad dim")
-	}
-	sm := SubMat{
-		Rix: make([]int, 0, r),
-		Cix: make([]int, 0, c),
-		M:   m,
-	}
-	for i, b := range br {
-		if b != inv {
-			sm.Rix = append(sm.Rix, i)
-		}
-	}
-	for i, b := range bc {
-		if b != inv {
-			sm.Cix = append(sm.Cix, i)
-		}
-	}
-	return &sm
-}
-
-type SubMat struct {
-	Rix, Cix []int
-	M        mat.Matrix
-}
-
-func (bm *SubMat) At(i, j int) float64 { return bm.M.At(bm.Rix[i], bm.Cix[j]) }
-func (bm *SubMat) AtVec(i int) float64 { return bm.M.At(bm.Rix[i], 0) }
-func (bm *SubMat) Len() int            { return len(bm.Rix) }
-func (bm *SubMat) Dims() (int, int)    { return len(bm.Rix), len(bm.Cix) }
-func (bm *SubMat) T() mat.Matrix {
-	return mat.Transpose{Matrix: bm}
-}
-
 func CopyBlocks(dst *mat.Dense, rows, cols int, src []mat.Matrix) error {
 	if len(src) != rows*cols {
 		return mat.ErrShape

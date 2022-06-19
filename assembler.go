@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/soypat/go-fem/internal/expmat"
+	"github.com/soypat/go-fem/exp/expmat"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r3"
 )
@@ -78,8 +78,7 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 	aux1 := mat.NewDense(NdofperElem, 6, nil)
 	aux2 := mat.NewDense(NdofperElem, NdofperElem, nil)
 	NvalPerElem := NdofperElem * NdofperElem
-	I, J := make([]int, NvalPerElem*Nelem), make([]int, NvalPerElem*Nelem)
-	V := make([]float64, NvalPerElem*Nelem)
+	KData := expmat.NewSparseAccum(NvalPerElem * Nelem)
 	for iele := 0; iele < Nelem; iele++ {
 		Ke.Zero()
 		element, x, y := getElement(iele)
@@ -126,9 +125,9 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 			Ke.Add(Ke, aux2)
 		}
 		offset := iele * NvalPerElem
-		assembleElement(V[offset:], I[offset:], J[offset:], elemDofs, Ke)
+		assembleElement(KData.V[offset:], KData.I[offset:], KData.J[offset:], elemDofs, Ke)
 	}
-	ga.ksolid.AddData(I, J, V)
+	ga.ksolid.Accumulate(KData)
 	return nil
 }
 
@@ -214,14 +213,10 @@ func (ga *GeneralAssembler) AddElement3(elemT Element3, c Constituter, Nelem int
 		panic("AddElement3 currently only handles 6 rigid body motion degrees of freedom")
 	}
 	var T3 r3.Mat
-	var rotator mat.Matrix = &expmat.SubMat{
-		Rix: dofMapping,
-		Cix: dofMapping,
-		M: blkDiag{
-			rep: 2 * NnodPerElem,
-			m:   &T3,
-		},
-	}
+	var rotator mat.Matrix = expmat.NewSubIdx(dofMapping, dofMapping, blkDiag{
+		rep: 2 * NnodPerElem,
+		m:   &T3,
+	})
 
 	Ke := mat.NewDense(NdofPerElem, NdofPerElem, nil)
 	elemNodes := make([]r3.Vec, NnodPerElem)

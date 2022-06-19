@@ -48,6 +48,22 @@ type Element3 interface {
 	SetConstitutive(c Constituter) error
 }
 
+// EssentialBC represents essential or Dirichlet boundary conditions for a
+// finite element problem.
+type EssentialBC interface {
+	Dofs() DofsFlag
+	// AtNode returns essential boundary conditions for ith node.
+	// Boundary conditions are set by setting the corresponding
+	// bit of fixed DofsFlag and setting the imposed value with imposedBC.
+	// If imposedBC is nil then the degree of freedom is eliminated in
+	// in the system and results in a equivalent value of 0. The returned
+	// length of a non zero-length imposedBC must match the amount of set
+	// dofs in fixed: fixed.Count() == len(imposedBC)
+	AtNode(i int) (fixed DofsFlag, imposedBC []float64)
+	// NumberOfNodes returns the number of nodes in model.
+	NumberOfNodes() int
+}
+
 // DofsFlag holds bitwise information of degrees of freedom.
 type DofsFlag uint16
 
@@ -81,6 +97,18 @@ func (d DofsFlag) Count() int {
 		c += int(d>>i) & 1
 	}
 	return c
+}
+
+// DoSet iterates over set dofs of d and calls f on each single set dof.
+// i is the bit position of the set dof such that int(q) == 1<<i.
+func (d DofsFlag) DoSet(f func(i int, q DofsFlag)) {
+	for i := 0; i < maxDofsPerNode; i++ {
+		q := DofsFlag(1 << i)
+		if !d.Has(q) {
+			continue
+		}
+		f(i, q)
+	}
 }
 
 // Has returns true if d has all of q's dofs set. It returns false if
