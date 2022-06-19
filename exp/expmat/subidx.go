@@ -21,6 +21,16 @@ type subIdxVec struct {
 func (bm *subIdxVec) Len() int            { return len(bm.ridx) }
 func (bm *subIdxVec) AtVec(i int) float64 { return bm.At(i, 0) }
 
+func NewSubIdxVec(ridx []int, m mat.Matrix) mat.Vector {
+	r, c := m.Dims()
+	if r == 1 {
+		return &subIdxVec{*NewSubIdx([]int{0}, ridx, m)}
+	} else if c != 1 {
+		panic("matrix should be 1xn or nx1 to create a Vector")
+	}
+	return &subIdxVec{*NewSubIdx(ridx, []int{0}, m)}
+}
+
 func NewSubIdx(ridx, cidx []int, m mat.Matrix) *SubIdx {
 	if len(ridx) == 0 || len(cidx) == 0 {
 		panic("cannot have zero dimension SubIdx")

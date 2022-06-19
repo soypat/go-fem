@@ -42,19 +42,19 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 	}
 	var (
 		// Number of nodes per element.
-		NnodperElem = elemT.LenNodes()
+		nodesPerElem = elemT.LenNodes()
 		// Number of dofs per element node.
-		NelemDofsPerNode = elemT.Dofs().Count()
+		dofsPerElemNode = elemT.Dofs().Count()
 		// Number of dofs per element.
-		NdofperElem = NnodperElem * NelemDofsPerNode
+		dofsPerElem = nodesPerElem * dofsPerElemNode
 		// Element stiffness matrix.
-		Ke = mat.NewDense(NdofperElem, NdofperElem, nil)
+		Ke = mat.NewDense(dofsPerElem, dofsPerElem, nil)
 		// number of columns in Compliance x NdofPerNode*nodesperelement
-		B = mat.NewDense(6, NdofperElem, nil)
+		B = mat.NewDense(6, dofsPerElem, nil)
 		// Differentiated form functions
-		dNxyz             = mat.NewDense(3, NnodperElem, nil)
-		C                 = c.Constitutive()
-		NmodelDofsPerNode = ga.dofs.Count()
+		dNxyz       = mat.NewDense(3, nodesPerElem, nil)
+		C           = c.Constitutive()
+		dofsPerNode = ga.dofs.Count()
 		// Quadrature integration points.
 		upg, wpg = elemT.Quadrature()
 	)
@@ -68,28 +68,28 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 	N := make([]*mat.VecDense, len(upg))
 	dN := make([]*mat.Dense, len(upg))
 	for ipg, pg := range upg {
-		N[ipg] = mat.NewVecDense(NnodperElem, elemT.Basis(pg))
-		dN[ipg] = mat.NewDense(3, NnodperElem, elemT.BasisDiff(pg))
+		N[ipg] = mat.NewVecDense(nodesPerElem, elemT.Basis(pg))
+		dN[ipg] = mat.NewDense(3, nodesPerElem, elemT.BasisDiff(pg))
 	}
 	var jac r3.Mat
-	elemNodBacking := make([]float64, 3*NnodperElem)
-	elemDofs := make([]int, NmodelDofsPerNode*NnodperElem)
-	elemNod := mat.NewDense(NnodperElem, 3, elemNodBacking)
-	aux1 := mat.NewDense(NdofperElem, 6, nil)
-	aux2 := mat.NewDense(NdofperElem, NdofperElem, nil)
-	NvalPerElem := NdofperElem * NdofperElem
+	elemNodBacking := make([]float64, 3*nodesPerElem)
+	elemDofs := make([]int, dofsPerNode*nodesPerElem)
+	elemNod := mat.NewDense(nodesPerElem, 3, elemNodBacking)
+	aux1 := mat.NewDense(dofsPerElem, 6, nil)
+	aux2 := mat.NewDense(dofsPerElem, dofsPerElem, nil)
+	NvalPerElem := dofsPerElem * dofsPerElem
 	KData := expmat.NewSparseAccum(NvalPerElem * Nelem)
 	for iele := 0; iele < Nelem; iele++ {
 		Ke.Zero()
 		element, x, y := getElement(iele)
-		if len(element) != NnodperElem {
-			return fmt.Errorf("element #%d of %d nodes expected to be of %d nodes", iele, len(element), NnodperElem)
+		if len(element) != nodesPerElem {
+			return fmt.Errorf("element #%d of %d nodes expected to be of %d nodes", iele, len(element), nodesPerElem)
 		}
 		if x != (r3.Vec{}) || y != (r3.Vec{}) {
 			return fmt.Errorf("arbitrary constitutive orientation not implemented yet")
 		}
 		storeElemNode(elemNodBacking, ga.nodes, element)
-		storeElemDofs(elemDofs, element, dofMapping, NmodelDofsPerNode)
+		storeElemDofs(elemDofs, element, dofMapping, dofsPerNode)
 		for ipg := range upg {
 			dNi := dN[ipg]
 			jac.Mul(dNi, elemNod)
@@ -103,7 +103,7 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 			if err != nil {
 				return fmt.Errorf("error calculating element #%d form factor: %s", iele, err)
 			}
-			for i := 0; i < NnodperElem; i++ {
+			for i := 0; i < nodesPerElem; i++ {
 				// First three rows.
 				B.Set(0, i*3, dNxyz.At(0, i))
 				B.Set(1, i*3+1, dNxyz.At(1, i))
