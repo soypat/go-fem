@@ -3,6 +3,7 @@ package fem
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/soypat/go-fem/exp/expmat"
 	"gonum.org/v1/gonum/blas/blas64"
@@ -26,9 +27,6 @@ type GeneralSolution struct {
 
 // NewGeneralSolution creates a solver with nodes and a user designated solver.
 func NewGeneralSolution(solver Solver, nodes []r3.Vec) *GeneralSolution {
-	if solver == nil {
-		panic("nil solver argument")
-	}
 	return &GeneralSolution{
 		sol:   solver,
 		nodes: nodes,
@@ -43,9 +41,6 @@ func NewGeneralSolution(solver Solver, nodes []r3.Vec) *GeneralSolution {
 //  - Essential or Dirichlet boundary conditions as eBC. These correspond to
 //  imposed displacements in solid mechanics or fixed temperatures in thermal problems.
 func (gs *GeneralSolution) Solve(Kglobal mat.Matrix, globalNaturalBC mat.Vector, eBC EssentialBC) error {
-	if len(gs.nodes) != 0 && len(gs.nodes) != eBC.NumberOfNodes() {
-		return fmt.Errorf("GeneralSolution nodes length %d must be zero or equal to number of nodes %d expected by EssentialBC", len(gs.nodes), eBC.NumberOfNodes())
-	}
 	if Kglobal == nil || globalNaturalBC == nil || eBC == nil {
 		panic("nil argument to Solve")
 	}
@@ -56,12 +51,7 @@ func (gs *GeneralSolution) Solve(Kglobal mat.Matrix, globalNaturalBC mat.Vector,
 	if r != c {
 		return fmt.Errorf("Kglobal not square. got %d by %d", r, c)
 	}
-	if globalNaturalBC.Len() != r {
-		return fmt.Errorf("Kglobal dimension %d should be equal to globalNaturalBC length %d", r, globalNaturalBC.Len())
-	}
-	dofs := eBC.Dofs()
-	dofsPerNode := dofs.Count()
-	totalDofs := dofsPerNode * eBC.NumberOfNodes()
+	totalDofs := eBC.NumberOfDofs()
 	if totalDofs != r {
 		return fmt.Errorf("Kglobal dimension %d should be equal to amount of dofs in EssentialBC %d", r, totalDofs)
 	}
@@ -85,10 +75,9 @@ func (gs *GeneralSolution) Solve(Kglobal mat.Matrix, globalNaturalBC mat.Vector,
 	return nil
 }
 
-// DenseSolution returns the globally indexed solution of the finite element problem.
-func (gs *GeneralSolution) DenseSolution() *mat.VecDense {
-	dofsPerNode := gs.ebc.Dofs().Count()
-	totalDofs := dofsPerNode * gs.ebc.NumberOfNodes()
+// GlobalSolution returns the globally indexed solution of the finite element problem.
+func (gs *GeneralSolution) GlobalSolution() mat.Vector {
+	totalDofs := gs.ebc.NumberOfDofs()
 	fixed := make([]bool, totalDofs)
 	err := setBoolEssentialBC(fixed, gs.ebc)
 	if err != nil {
@@ -100,31 +89,27 @@ func (gs *GeneralSolution) DenseSolution() *mat.VecDense {
 }
 
 func setBoolEssentialBC(dst []bool, eBC EssentialBC) error {
-	dofs := eBC.Dofs()
-	dofsPerNode := dofs.Count()
-	for i := 0; i < eBC.NumberOfNodes(); i++ {
-		nodeDofs, imposed := eBC.AtNode(i)
-		if imposed != nil {
+	for i := 0; i < eBC.NumberOfDofs(); i++ {
+		bc, imposed := eBC.AtDof(i)
+		if imposed != 0 {
 			return errors.New("Solve does not yet support imposed essential boundary conditions")
 		}
-		offset := dofsPerNode * i
-		dofCount := 0
-		for j := 0; dofCount < dofsPerNode; j++ {
-			d := DofsFlag(1 << j)
-			if !dofs.Has(d) {
-				continue
-			}
-			dst[offset+dofCount] = nodeDofs.Has(d)
-			dofCount++
-			if j > maxDofsPerNode {
-				panic("unreachable") // Remove after tests have been added.
-			}
-		}
+		dst[i] = bc
 	}
 	return nil
 }
 
-func (gs *GeneralSolution) StoreIsoparamtric3QuadStrains(elemT Isoparametric3, c Constituter, Nelem int, getElement func(i int) (elem []int, xC, yC r3.Vec)) error {
+type ElementSolution struct {
+	NodeStrain   []float64
+	NodeStress   []float64
+	QuadStrain   []float64
+	QuadStress   []float64
+	InterpStrain []float64
+	InterpStress []float64
+}
+
+func (gs *GeneralSolution) DoStrainIsoparametric3(elemT Isoparametric3, c Constituter,
+	Nelem int, getElement func(i int) (elem []int, xC, yC r3.Vec), doSol func(i int, sol ElementSolution)) error {
 	if len(gs.nodes) == 0 {
 		return errors.New("nodes must not be zero length before calculating isoparametric strains")
 	}
@@ -136,12 +121,7 @@ func (gs *GeneralSolution) StoreIsoparamtric3QuadStrains(elemT Isoparametric3, c
 		dofsPerElemNode = elemT.Dofs().Count()
 		dofsPerElem     = nodesPerElem * dofsPerElemNode
 	)
-	// helper assembler.
-	ga := GeneralAssembler{
-		dofs:  dofs,
-		nodes: gs.nodes,
-	}
-	dofMapping, err := ga.DofMapping(elemT)
+	dofMapping, err := DofMapping(dofs, elemT)
 	if err != nil {
 		return err
 	}
@@ -149,18 +129,20 @@ func (gs *GeneralSolution) StoreIsoparamtric3QuadStrains(elemT Isoparametric3, c
 	if len(upg) != len(wpg) {
 		return fmt.Errorf("length of element quadrature positions %d and weights %d must be equal", len(upg), len(wpg))
 	}
-	// Calculate form functions evaluated at integration points.
-	N := make([]*mat.VecDense, len(upg))
-	dN := make([]*mat.Dense, len(upg))
-	for inod, nod := range upg {
-		N[inod] = mat.NewVecDense(1, elemT.Basis(nod))
-		dN[inod] = mat.NewDense(dofsPerElemNode, nodesPerElem, elemT.BasisDiff(nod))
+	_, dNn := evalIsoBasis(elemT, elemT.IsoparametricNodes())
+	Npg, dNpg := evalIsoBasis(elemT, upg)
+	solution := gs.GlobalSolution()
+	esol := ElementSolution{
+		NodeStrain: make([]float64, nodesPerElem*constitutiveDim),
+		NodeStress: make([]float64, nodesPerElem*constitutiveDim),
+		QuadStrain: make([]float64, len(upg)*constitutiveDim),
+		QuadStress: make([]float64, len(upg)*constitutiveDim),
 	}
-
-	solution := gs.DenseSolution()
-	var auxVec mat.VecDense
 	jac := r3.NewMat(nil)
-	strain := make([]float64, Nelem*len(upg)*constitutiveDim)
+	nodeStrain := mat.NewVecDense(len(esol.NodeStrain), nil)
+	nodeStress := mat.NewVecDense(len(esol.NodeStress), nil)
+	interpStress := mat.NewVecDense(len(esol.InterpStress), nil)
+	interpStrain := mat.NewVecDense(len(esol.InterpStrain), nil)
 	elemDofs := make([]int, nodesPerElem*dofsPerElemNode)
 	elemNodesBacking := make([]float64, 3*nodesPerElem)
 	elemNodes := mat.NewDense(nodesPerElem, 3, elemNodesBacking)
@@ -176,14 +158,13 @@ func (gs *GeneralSolution) StoreIsoparamtric3QuadStrains(elemT Isoparametric3, c
 			return errors.New("isoparametric element constitutive matrix arbitrary orientation not supported yet")
 		}
 		storeElemNode(elemNodesBacking, gs.nodes, element)
-		storeElemDofs(elemDofs, element, dofMapping, dofsPerElemNode) // This modifies elemDisplacements.
-		for inode := range upg {
-			dNi := dN[inode]
+		storeElemDofs(elemDofs, element, dofMapping, dofsPerElemNode)
+		// Iterate over
+		for inode := 0; inode < elemT.LenNodes(); inode++ {
+			dNi := dNn[inode]
 			jac.Mul(dNi, elemNodes)
 			dJac := jac.Det()
-			if dJac < 0 {
-				// return fmt.Errorf("negative determinant of jacobian of element #%d, Check node ordering", iele)
-			} else if dJac < 1e-12 {
+			if math.Abs(dJac) < 1e-12 {
 				return fmt.Errorf("zero determinant of jacobian of element #%d, Check element shape for bad aspect ratio", iele)
 			}
 			err := dNxyz.Solve(jac, dNi)
@@ -205,12 +186,50 @@ func (gs *GeneralSolution) StoreIsoparamtric3QuadStrains(elemT Isoparametric3, c
 				B.Set(5, i*3, dNxyz.At(2, i))
 				B.Set(5, i*3+2, dNxyz.At(0, i))
 			}
-			auxIdx := iele*(nodesPerElem*constitutiveDim) + inode*constitutiveDim
-			// strain = B*D  where D is displacements
-			s := strain[auxIdx : auxIdx+6]
-			auxVec.SetRawVector(blas64.Vector{N: 6, Inc: 1, Data: s})
-			// To calculate stresses later on: stress = C*B*D = C*strain
-			auxVec.MulVec(B, elemDisplacements)
+			offset := inode * constitutiveDim
+			nodeStrain.SetRawVector(blas64.Vector{
+				N:    constitutiveDim,
+				Inc:  1,
+				Data: esol.NodeStrain[offset : offset+constitutiveDim],
+			})
+			nodeStrain.MulVec(B, elemDisplacements)
+			nodeStress.SetRawVector(blas64.Vector{
+				N:    constitutiveDim,
+				Inc:  1,
+				Data: esol.NodeStress[offset : offset+constitutiveDim],
+			})
+			nodeStress.MulVec(C, nodeStrain)
+		}
+		nodeStresses := mat.NewDense(nodesPerElem, constitutiveDim, esol.NodeStress)
+		nodeStrains := mat.NewDense(nodesPerElem, constitutiveDim, esol.NodeStrain)
+		// Quadrature interpolation.
+		for i := range upg {
+			offset := i * constitutiveDim
+			interpStrain.SetRawVector(blas64.Vector{
+				N:    constitutiveDim,
+				Inc:  1,
+				Data: esol.InterpStrain[offset : offset+constitutiveDim],
+			})
+			interpStrain.MulVec(nodeStrains, Npg[i])
+			interpStress.SetRawVector(blas64.Vector{
+				N:    constitutiveDim,
+				Inc:  1,
+				Data: esol.InterpStress[offset : offset+constitutiveDim],
+			})
+			interpStress.MulVec(nodeStresses, Npg[i])
+		}
+		// Finally we calculate stress at quadrature points which is most accurate.
+		for i := range upg {
+			dNi := dNpg[i]
+			jac.Mul(dNi, elemNodes)
+			dJac := jac.Det()
+			if math.Abs(dJac) < 1e-12 {
+				return fmt.Errorf("zero determinant of jacobian of element #%d, Check element shape for bad aspect ratio", iele)
+			}
+			err := dNxyz.Solve(jac, dNi)
+			if err != nil {
+				return fmt.Errorf("error calculating element #%d form factor: %s", iele, err)
+			}
 		}
 	}
 	return nil

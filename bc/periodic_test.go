@@ -6,22 +6,20 @@ import (
 	"github.com/soypat/go-fem"
 	"github.com/soypat/go-fem/bc"
 	"github.com/soypat/go-fem/elements"
-	"github.com/soypat/go-fem/exp/expmat"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
 func TestAssemblerPeriodicBoundaryConditions(t *testing.T) {
 	var (
+		getElement  = func(i int) ([]int, r3.Vec, r3.Vec) { return rucElements[i][:], r3.Vec{}, r3.Vec{} }
 		modelBounds = r3.Box{Max: r3.Vec{X: 10, Y: 10, Z: 10}}
 		nodes       = rucNodes
 		material    = fem.IsotropicMaterial{E: 14e3, Poisson: 0.2}
 		elemType    = elements.Hexa8{}
 	)
 	ga := fem.NewGeneralAssembler(nodes, fem.DofPos)
-	err := ga.AddIsoparametric3(elemType, material, len(rucElements), func(i int) (elem []int, xC r3.Vec, yC r3.Vec) {
-		return rucElements[i][:], xC, yC
-	})
+	err := ga.AddIsoparametric3(elemType, material, len(rucElements), getElement)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,31 +34,56 @@ func TestAssemblerPeriodicBoundaryConditions(t *testing.T) {
 	Kglobal.GeneralAccumulate(false, r, 0, Cn)
 	Kglobal.GeneralAccumulate(true, 0, c, Cn)
 	ndofs, _ := Kglobal.Dims()
-	fixedDofs := make([]bool, ndofs)
-	boolsAreFixed := true
+	fixed := &bc.Essential{
+		Nodes:     make([]fem.DofsFlag, len(nodes)),
+		D:         fem.DofPos,
+		Augmented: make([]bool, nEquations),
+	}
 	// Fix one node of the model so it cannot translate as a rigid body.
-	fixedDofs[len(nodes)*3-1] = true
-	fixedDofs[len(nodes)*3-2] = true
-	fixedDofs[len(nodes)*3-3] = true
-	loads := make([]float64, ndofs)
-	imposedLoads := loads[len(loads)-nEquations:]
+	fixed.Nodes[len(nodes)-1] = fem.DofPos
+
+	loadsBacking := make([]float64, ndofs)
+	loads := mat.NewVecDense(ndofs, loadsBacking)
+	imposedLoads := loadsBacking[len(loadsBacking)-nEquations:]
 	// Cruc := mat.NewDense(6, 6, nil)
-	displacements := mat.NewVecDense(ndofs, nil)
+	// displacements := mat.NewVecDense(ndofs, nil)
 	for rucCase := 0; rucCase < 6; rucCase++ {
 		err = bf.PeriodicImposedDisplacements(imposedLoads, rucCase, 0.1)
 		if err != nil {
 			t.Fatal(err)
 		}
-		// Solve system.
-		var freeDisplacements mat.VecDense
-		loadVec := mat.NewVecDense(ndofs, loads)
-		freeDisplacements.SolveVec(
-			expmat.BoolIndexed(Kglobal, boolsAreFixed, fixedDofs, fixedDofs),
-			expmat.BoolIndexedVec(loadVec, boolsAreFixed, fixedDofs),
-		)
-		expmat.BoolSetVec(displacements, &freeDisplacements, boolsAreFixed, fixedDofs)
+		gs := fem.NewGeneralSolution(nil, nodes)
+		err = gs.Solve(Kglobal, loads, fixed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Extract strains.
+		err = gs.DoStrainIsoparametric3(elemType, material, len(rucElements), getElement, func(i int, strain fem.ElementSolution) {
 
-		// Extract stresses.
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		strainSum := mat.NewVecDense(6, nil)
+		stressSum := mat.NewVecDense(6, nil)
+		auxVec := mat.NewVecDense(6, nil)
+		for iele := 0; iele < len(rucElements); iele++ {
+			enodi := rucElements[iele][:]
+			storeElemNode(enod, nodes, enodi)
+			storeElemDofs(edofs, enodi, 3)
+			for ipg := range upg {
+				jac.Mul(dN[ipg], denseFromR3(enod))
+				intV := jac.Det() * wpg[ipg]
+				// Store strain.
+				auxIdx := iele*(Nnodelem*Nstressnod) + ipg*Nstressnod
+				strainVec := mat.NewVecDense(6, strain[auxIdx:auxIdx+6])
+				strainSum.AddScaledVec(strainSum, intV, strainVec)
+				// Calculate stress and store.
+				auxVec.MulVec(Cm, strainVec)
+				stressSum.AddScaledVec(stressSum, intV, &auxVec)
+			}
+		}
 		// unod := elemType.IsoparametricNodes()
 	}
 

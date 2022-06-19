@@ -7,11 +7,18 @@ import (
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
+// Dofer represents a component of a finite element model such as an element or
+// boundary conditions. The return value of Dofs refers to the Dofer's degrees
+// of freedom in play.
+type Dofer interface {
+	// Dofs returns the Dofer's degrees of freedom in play.
+	Dofs() DofsFlag
+}
+
 type Element interface {
+	Dofer
 	// LenNodes returns the number of nodes in the element.
 	LenNodes() int
-	// Dofs returns the degrees of freedom corresponding to each of the element's nodes.
-	Dofs() DofsFlag
 }
 
 // Isoparametric3 is a 3D element that employs the isoparametric formulation.
@@ -51,17 +58,11 @@ type Element3 interface {
 // EssentialBC represents essential or Dirichlet boundary conditions for a
 // finite element problem.
 type EssentialBC interface {
-	Dofs() DofsFlag
-	// AtNode returns essential boundary conditions for ith node.
-	// Boundary conditions are set by setting the corresponding
-	// bit of fixed DofsFlag and setting the imposed value with imposedBC.
-	// If imposedBC is nil then the degree of freedom is eliminated in
-	// in the system and results in a equivalent value of 0. The returned
-	// length of a non zero-length imposedBC must match the amount of set
-	// dofs in fixed: fixed.Count() == len(imposedBC)
-	AtNode(i int) (fixed DofsFlag, imposedBC []float64)
-	// NumberOfNodes returns the number of nodes in model.
-	NumberOfNodes() int
+	Dofer
+	// AtDof returns essential boundary conditions for ith dof.
+	AtDof(i int) (fixed bool, imposedBC float64)
+	// NumberOfDofs returns the number of dofs in model.
+	NumberOfDofs() int
 }
 
 // DofsFlag holds bitwise information of degrees of freedom.
@@ -88,6 +89,7 @@ const (
 	DofPos = DofPosX | DofPosY | DofPosZ
 	DofRot = DofRotX | DofRotY | DofRotZ
 	Dof6   = DofPos | DofRot
+	DofAll = 1<<maxDofsPerNode - 1
 )
 
 // Count returns the number of dofs set in d.

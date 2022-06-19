@@ -36,7 +36,7 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 	if elemT == nil || c == nil || getElement == nil {
 		panic("nil argument to AddIsoparametric3") // This is very likely programmer error.
 	}
-	dofMapping, err := ga.DofMapping(elemT)
+	dofMapping, err := DofMapping(ga.dofs, elemT)
 	if err != nil {
 		return err
 	}
@@ -65,12 +65,7 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 		return fmt.Errorf("expected constitutive matrix to be 6x6, got %dx%d", r, c)
 	}
 	// Calculate form functions evaluated at integration points.
-	N := make([]*mat.VecDense, len(upg))
-	dN := make([]*mat.Dense, len(upg))
-	for ipg, pg := range upg {
-		N[ipg] = mat.NewVecDense(nodesPerElem, elemT.Basis(pg))
-		dN[ipg] = mat.NewDense(3, nodesPerElem, elemT.BasisDiff(pg))
-	}
+	_, dN := evalIsoBasis(elemT, upg)
 	var jac r3.Mat
 	elemNodBacking := make([]float64, 3*nodesPerElem)
 	elemDofs := make([]int, dofsPerNode*nodesPerElem)
@@ -147,18 +142,18 @@ func assembleElement(V []float64, I, J, elemDofs []int, Ke *mat.Dense) {
 	}
 }
 
-// DofMapping creates element to model dof mapping. If model does not contain all argument elements
-// dofs then an error is returned.
-// The length of the slice returned is equal to the amount of dofs per element node.
-func (ga *GeneralAssembler) DofMapping(e Element) ([]int, error) {
-	edofs := e.Dofs()
-	if !ga.dofs.Has(edofs) {
-		return nil, fmt.Errorf("model dofs %s does not contain all element dofs %s", ga.dofs.String(), e.Dofs().String())
+// DofMapping creates Dofer to model dof mapping. If model does not have set
+// all Dofer's dofs then an error is returned.
+// The length of the slice returned is equal to dofer.Dofs().Count().
+func DofMapping(modelDofs DofsFlag, dofer Dofer) ([]int, error) {
+	subdofs := dofer.Dofs()
+	if !modelDofs.Has(subdofs) {
+		return nil, fmt.Errorf("model dofs %s does not contain all Dofers dofs %s", modelDofs.String(), dofer.Dofs().String())
 	}
-	dofMapping := make([]int, edofs.Count())
+	dofMapping := make([]int, subdofs.Count())
 	idm := 0
-	for i := 0; i < ga.dofs.Count(); i++ {
-		if ga.dofs.Has(1<<i) && edofs.Has(1<<i) {
+	for i := 0; i < modelDofs.Count(); i++ {
+		if modelDofs.Has(1<<i) && subdofs.Has(1<<i) {
 			dofMapping[idm] = i
 			idm++
 		}
@@ -196,7 +191,7 @@ func (ga *GeneralAssembler) AddElement3(elemT Element3, c Constituter, Nelem int
 	if elemT == nil || c == nil || getElement == nil {
 		panic("nil argument to AddElement3") // This is very likely programmer error.
 	}
-	dofMapping, err := ga.DofMapping(elemT)
+	dofMapping, err := DofMapping(ga.dofs, elemT)
 	if err != nil {
 		return err
 	}
@@ -296,4 +291,17 @@ func (b blkDiag) T() mat.Matrix {
 		rep: b.rep,
 		m:   b.m.T(),
 	}
+}
+
+func evalIsoBasis(elemT Isoparametric3, points []r3.Vec) (N []*mat.VecDense, dN []*mat.Dense) {
+	// Calculate form functions evaluated at integration points.
+	N = make([]*mat.VecDense, len(points))
+	dN = make([]*mat.Dense, len(points))
+	nodesPerElem := elemT.LenNodes()
+	dofPerElemNode := elemT.Dofs().Count()
+	for inod, nod := range points {
+		N[inod] = mat.NewVecDense(nodesPerElem, elemT.Basis(nod))
+		dN[inod] = mat.NewDense(dofPerElemNode, nodesPerElem, elemT.BasisDiff(nod))
+	}
+	return N, dN
 }
