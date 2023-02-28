@@ -52,12 +52,16 @@ func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constitute
 		// number of columns in Compliance x NdofPerNode*nodesperelement
 		B = mat.NewDense(6, NdofperElem, nil)
 		// Differentiated form functions
-		dNxyz             = mat.NewDense(3, NnodperElem, nil)
-		C                 = c.Constitutive()
+		dNxyz = mat.NewDense(3, NnodperElem, nil)
+
 		NmodelDofsPerNode = ga.dofs.Count()
 		// Quadrature integration points.
 		upg, wpg = elemT.Quadrature()
 	)
+	C, err := c.Constitutive()
+	if err != nil {
+		return err
+	}
 	if len(upg) == 0 || len(upg) != len(wpg) {
 		return fmt.Errorf("bad quadrature result from isoparametric element")
 	}

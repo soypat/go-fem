@@ -1,13 +1,17 @@
 package fem
 
-import "gonum.org/v1/gonum/mat"
+import (
+	"fmt"
+
+	"gonum.org/v1/gonum/mat"
+)
 
 // Constituter represents the homogenous properties of a medium
 // that can then be used to model solids or other continuous field problems.
 // For solids it returns the unmodified constitutive tensor (Generalized Hookes law).
 // The shear modulii should not be halved.
 type Constituter interface {
-	Constitutive() mat.Matrix
+	Constitutive() (mat.Matrix, error)
 }
 
 // IsotropicMaterial represents a material with no preferential direction
@@ -21,7 +25,7 @@ type IsotropicMaterial struct {
 }
 
 // return value will be concrete in future.
-func (m IsotropicMaterial) Constitutive() mat.Matrix {
+func (m IsotropicMaterial) Constitutive() (mat.Matrix, error) {
 	G := m.E / (2 + 2*m.Poisson)
 	lambda := m.E * m.Poisson / ((1 + m.Poisson) * (1 - 2*m.Poisson))
 	return mat.NewDense(6, 6, []float64{
@@ -31,7 +35,7 @@ func (m IsotropicMaterial) Constitutive() mat.Matrix {
 		0, 0, 0, G, 0, 0,
 		0, 0, 0, 0, G, 0,
 		0, 0, 0, 0, 0, G,
-	})
+	}), nil
 }
 
 // TransverselyIsotropicMaterial is a material that is transversally isotropic
@@ -53,7 +57,7 @@ type TransverselyIsotropicMaterial struct {
 }
 
 // return value will be concrete in future.
-func (m TransverselyIsotropicMaterial) Constitutive() mat.Matrix {
+func (m TransverselyIsotropicMaterial) Constitutive() (mat.Matrix, error) {
 	iEx := 1 / m.Ex
 	iExy := 1 / m.Exy
 	iGxy := 1 / m.Gxy
@@ -72,7 +76,7 @@ func (m TransverselyIsotropicMaterial) Constitutive() mat.Matrix {
 	// Calculate stiffness/constitutive from compliance.
 	err := S.Inverse(S)
 	if err != nil {
-		panic("singular matrix in constitutive calculation probably due to invalid material parameter")
+		return nil, fmt.Errorf("failed constitutive calculation probably due to invalid material parameter: %w", err)
 	}
-	return S
+	return S, nil
 }

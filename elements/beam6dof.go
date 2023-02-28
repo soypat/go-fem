@@ -93,7 +93,11 @@ type solidProperties struct {
 func extractSolidProps(c fem.Constituter) (solidProperties, error) {
 	var sp solidProperties
 	s := mat.NewDense(6, 6, nil)
-	err := s.Inverse(c.Constitutive())
+	C, err := c.Constitutive()
+	if err != nil {
+		return solidProperties{}, err
+	}
+	err = s.Inverse(C)
 	if err != nil {
 		return solidProperties{}, err
 	}
