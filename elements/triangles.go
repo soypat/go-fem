@@ -7,6 +7,7 @@ import (
 	"gonum.org/v1/gonum/spatial/r2"
 )
 
+// Triangle3 is the 3 node 2D triangle element.
 type Triangle3 struct {
 	// QuadratureOrder is the degree of the quadrature used for integration.
 	// If zero a default value of 1 is used (1 node gauss quadrature).
@@ -72,6 +73,8 @@ func (t3 Triangle3) String() string { return "TRI6(order=" + strconv.Itoa(t3.ord
 
 func (Triangle3) area() float64 { return 0.5 }
 
+// Triangle6 is the 6 node 2D triangle element. The 3 nodes besides the corners
+// are located at the middle of the edges.
 type Triangle6 struct {
 	// QuadratureOrder is the degree of the quadrature used for integration.
 	// If zero a default value of 2 is used (3 node gauss quadrature).
@@ -154,8 +157,9 @@ func getTriangleQuads(order int) (nodes []r2.Vec, weights []float64) {
 		panic("triangle quadrature order not implemented")
 	}
 	// Clone slices.
-	nodes = append([]r2.Vec{}, triangleQuads[order-1].Nodes...)
-	weights = append([]float64{}, triangleQuads[order-1].Weights...)
+	quads := triangleQuads[order-1]
+	nodes = append([]r2.Vec{}, quads.Nodes...)
+	weights = append([]float64{}, quads.Weights...)
 	for i := range weights {
 		weights[i] *= 0.5 // Denormalize weights.
 	}

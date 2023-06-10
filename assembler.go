@@ -32,6 +32,8 @@ func NewGeneralAssembler(nodes []r3.Vec, modelDofs DofsFlag) *GeneralAssembler {
 func (ga *GeneralAssembler) Ksolid() *lap.Sparse { return &ga.ksolid }
 
 // AddIsoparametric3 adds isoparametric elements to the model's solid stiffness matrix.
+// It calls getElement to get the element nodes and coordinates Nelem times, each with
+// an incrementing element index i.
 // TODO: implement arbitrary orientation of solid properties for each isoparametric element.
 func (ga *GeneralAssembler) AddIsoparametric3(elemT Isoparametric3, c Constituter, Nelem int, getElement func(i int) (elem []int, xC, yC r3.Vec)) error {
 	if elemT == nil || c == nil || getElement == nil {
@@ -234,7 +236,7 @@ func (ga *GeneralAssembler) AddElement3(elemT Element3, c Constituter, Nelem int
 	for iele := 0; iele < Nelem; iele++ {
 		Ke.Zero()
 		element, x, y := getElement(iele)
-		if x != (r3.Vec{}) && y != (r3.Vec{}) {
+		if x != (r3.Vec{}) || y != (r3.Vec{}) {
 			return errors.New("element orientation not supported yet")
 		}
 		if len(element) != NnodPerElem {

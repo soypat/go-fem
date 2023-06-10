@@ -3,6 +3,7 @@ Go packages for finite element analysis/methods.
 
 #### Roadmap
 * ~~3D Isoparametric element assembly.~~
+* ~~Better sparse assembler~~ As fast as high performance libraries.
 * 2D Isoparametric element assembly.
 * Shell and plate element assembly.
 * Arbitrary element assembly.
@@ -11,8 +12,7 @@ Go packages for finite element analysis/methods.
   - Lagrange Multipliers or Penalty method.
 * Stiffness matrix utility functions for better conditioning and troubleshooting.
 * Stress extraction from displacements.
-* Better sparse assembler
-  -  Current implementation is makeshift sparse matrix using underlying native Go `map` type.
+
 
 #### Example
 ```go

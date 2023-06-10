@@ -47,7 +47,7 @@ func ExampleGeneralAssembler() {
 }
 
 // Calculates the stiffness matrix of a single isoparametric tetrahedron element.
-func ExampleAnisotripic() {
+func ExampleAnisotripicConstitutive() {
 	carbonFiber := fem.TransverselyIsotropicMaterial{
 		Ex:        235e9,
 		Exy:       15e9,
@@ -68,4 +68,18 @@ func ExampleAnisotripic() {
 	// ⎢       0         0         0     6e+09         0         0⎥
 	// ⎢       0         0         0         0   2.8e+10         0⎥
 	// ⎣       0         0         0         0         0   2.8e+10⎦
+}
+
+func ExampleAxisymmetricConstitutive() {
+	steel := fem.IsotropicMaterial{E: 1000, Poisson: 0.33}
+	steelAxisymmetric := fem.AxisymmetricIsotropicMaterial{
+		IsotropicMaterial: steel,
+	}
+	C, err := steelAxisymmetric.Constitutive()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("C=\n%.3g", lap.Formatted(C))
+	//Output:
+
 }

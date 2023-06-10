@@ -27,8 +27,8 @@ type IsotropicMaterial struct {
 
 // return value will be concrete in future.
 func (m IsotropicMaterial) Constitutive() (mat.Matrix, error) {
-	G := m.E / (2 + 2*m.Poisson)
-	lambda := m.E * m.Poisson / ((1 + m.Poisson) * (1 - 2*m.Poisson))
+	G := m.ShearModulus()
+	lambda := m.lameParam2()
 	return mat.NewDense(6, 6, []float64{
 		lambda + 2*G, lambda, lambda, 0, 0, 0,
 		lambda, lambda + 2*G, lambda, 0, 0, 0,
@@ -37,6 +37,17 @@ func (m IsotropicMaterial) Constitutive() (mat.Matrix, error) {
 		0, 0, 0, 0, G, 0,
 		0, 0, 0, 0, 0, G,
 	}), nil
+}
+
+// ShearModulus returns the shear modulus of the material, often denoted as G.
+func (m IsotropicMaterial) ShearModulus() float64 {
+	return m.E / (2 + 2*m.Poisson)
+}
+
+// lameParam2 returns the second Lamé parameter, also known as lambda.
+// https://en.wikipedia.org/wiki/Lam%C3%A9_parameters
+func (m IsotropicMaterial) lameParam2() float64 {
+	return m.E * m.Poisson / ((1 + m.Poisson) * (1 - 2*m.Poisson))
 }
 
 // TransverselyIsotropicMaterial is a material that is transversally isotropic
@@ -95,14 +106,24 @@ func (m TransverselyIsotropicMaterial) Constitutive() (mat.Matrix, error) {
 	return mat.NewDense(6, 6, data), nil
 }
 
-// type AxisymmetricMaterial struct {
-// 	C Constituter
-// }
+type AxisymmetricIsotropicMaterial struct {
+	IsotropicMaterial
+}
 
-// func (ax AxisymmetricMaterial) Constitutive() (lap.Matrix, error) {
-// 	C, err := ax.C.Constitutive()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// }
+func (ax AxisymmetricIsotropicMaterial) Constitutive() (mat.Matrix, error) {
+	nu := ax.Poisson
+	f := nu / (1 - nu)
+	g := (1 - 2*nu) / (2 * (1 - nu))
+	factor := ax.E * (1 - nu) / ((1 + nu) * (1 - 2*nu))
+	f *= factor
+	g *= factor
+	data := []float64{
+		factor, f, f, 0, 0, 0,
+		f, factor, f, 0, 0, 0,
+		f, f, factor, 0, 0, 0,
+		0, 0, 0, g, 0, 0,
+		0, 0, 0, 0, g, 0,
+		0, 0, 0, 0, 0, g}
+	d := mat.NewDense(6, 6, data)
+	return d, nil
+}
