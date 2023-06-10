@@ -14,6 +14,8 @@ import (
 var elements2 = []iso2{
 	Quad8{},
 	Quad4{},
+	Triangle3{},
+	// Triangle6{},
 }
 
 type iso2 interface {
@@ -87,7 +89,15 @@ func TestQuadrature2d(t *testing.T) {
 	const (
 		tol = 1e-11
 	)
-	for _, element := range elements2 {
+	elements2WithQuads := []iso2{
+		Quad4{QuadratureOrder: 1},
+		Quad8{QuadratureOrder: 2},
+		Quad8{QuadratureOrder: 1},
+		Triangle3{QuadratureOrder: 2},
+		Triangle6{QuadratureOrder: 1},
+		Triangle6{QuadratureOrder: 3},
+	}
+	for _, element := range append(elements2, elements2WithQuads...) {
 		t.Run(element.String(), func(t *testing.T) {
 			wPositions, weights := element.Quadrature()
 			if len(wPositions) != len(weights) {

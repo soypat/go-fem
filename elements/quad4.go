@@ -1,15 +1,17 @@
 package elements
 
 import (
+	"strconv"
+
 	"github.com/soypat/go-fem"
 	"gonum.org/v1/gonum/spatial/r2"
 )
 
 // Quad4 is the 4 node 2D quadrilateral element.
 type Quad4 struct {
-	// QuadratureDegree is the degree of the quadrature used for integration.
+	// QuadratureOrder is the order (a.k.a degree) of the quadrature used for integration.
 	// If zero a default value of 2 is used (2x2 gauss quadrature).
-	QuadratureDegree int
+	QuadratureOrder int
 }
 
 var _ fem.Isoparametric2 = Quad4{}
@@ -62,10 +64,7 @@ func (Quad4) BasisDiff(v r2.Vec) []float64 {
 
 // Quadrature returns the quadrature nodes and weights of the element.
 func (q8 Quad4) Quadrature() ([]r2.Vec, []float64) {
-	quad := q8.QuadratureDegree
-	if quad == 0 {
-		quad = 2
-	}
+	quad := q8.order()
 	pos, w, err := uniformGaussQuad2d(quad, quad)
 	if err != nil {
 		panic(err)
@@ -73,7 +72,15 @@ func (q8 Quad4) Quadrature() ([]r2.Vec, []float64) {
 	return pos, w
 }
 
+func (q4 Quad4) order() int {
+	quad := q4.QuadratureOrder
+	if quad <= 0 {
+		quad = 2
+	}
+	return quad
+}
+
 // String returns a string representation of the element.
-func (Quad4) String() string { return "Quad4(2D)" }
+func (q4 Quad4) String() string { return "QUAD4(order=" + strconv.Itoa(q4.order()) + ")" }
 
 func (Quad4) area() float64 { return 4 }

@@ -1,6 +1,8 @@
 package elements
 
 import (
+	"strconv"
+
 	"github.com/soypat/go-fem"
 	"gonum.org/v1/gonum/spatial/r2"
 )
@@ -8,9 +10,9 @@ import (
 // Quad8 is the 8 node 2D quadrilateral element, also known as Serendipity element
 // due to the serendipitous nature of its integration points which make it unlike other 2D elements.
 type Quad8 struct {
-	// QuadratureDegree is the degree of the quadrature used for integration.
+	// QuadratureOrder is the order (a.k.a degree) of the quadrature used for integration.
 	// If zero a default value of 3 is used (3x3 gauss quadrature).
-	QuadratureDegree int
+	QuadratureOrder int
 }
 
 var _ fem.Isoparametric2 = Quad8{}
@@ -79,10 +81,7 @@ func (Quad8) BasisDiff(v r2.Vec) []float64 {
 
 // Quadrature returns the quadrature nodes and weights of the element.
 func (q8 Quad8) Quadrature() ([]r2.Vec, []float64) {
-	quad := q8.QuadratureDegree
-	if quad == 0 {
-		quad = 3
-	}
+	quad := q8.order()
 	pos, w, err := uniformGaussQuad2d(quad, quad)
 	if err != nil {
 		panic(err)
@@ -90,7 +89,15 @@ func (q8 Quad8) Quadrature() ([]r2.Vec, []float64) {
 	return pos, w
 }
 
+func (q8 Quad8) order() int {
+	quad := q8.QuadratureOrder
+	if quad <= 0 {
+		quad = 3
+	}
+	return quad
+}
+
 // String returns a string representation of the element.
-func (Quad8) String() string { return "QUAD8(2D)" }
+func (q8 Quad8) String() string { return "QUAD8(order=" + strconv.Itoa(q8.order()) + ")" }
 
 func (Quad8) area() float64 { return 4 }
