@@ -49,9 +49,10 @@ func (Hexa8) Basis(v r3.Vec) []float64 {
 // BasisDiff returns the differentiated form functions of the Hexa8 element
 // evaluated at v. The result first contains the form functions differentiated
 // with respect to X, then Y and finally Z.
-//      [ dN/dx ]
-//  N = | dN/dy |   (row major form)
-//      [ dN/dz ]
+//
+//	    [ dN/dx ]
+//	N = | dN/dy |   (row major form)
+//	    [ dN/dz ]
 func (Hexa8) BasisDiff(v r3.Vec) []float64 {
 	return []float64{
 		// Differentiated w.r.t. X
@@ -91,3 +92,5 @@ func (Hexa8) Quadrature() (positions []r3.Vec, weights []float64) {
 
 // String returns string representation of element type.
 func (Hexa8) String() string { return "HEXA8" }
+
+func (Hexa8) volume() float64 { return 8 }

@@ -3,8 +3,22 @@ package elements
 import (
 	"fmt"
 
+	"gonum.org/v1/gonum/spatial/r2"
 	"gonum.org/v1/gonum/spatial/r3"
 )
+
+func uniformGaussQuad2d(nx, ny int) (pos2d []r2.Vec, w []float64, err error) {
+	pos, w, err := uniformGaussQuad(nx, ny, 1)
+	if err != nil {
+		panic(err)
+	}
+	pos2d = make([]r2.Vec, len(pos))
+	for i := range pos {
+		w[i] /= 2
+		pos2d[i] = r2.Vec{X: pos[i].X, Y: pos[i].Y}
+	}
+	return pos2d, w, err
+}
 
 // uniformGaussQuad returns uniformly spaced quadrature points and weights in 3D space.
 // It returns nx*ny*nz points.

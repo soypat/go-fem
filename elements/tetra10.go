@@ -106,3 +106,5 @@ func (Tetra10) Quadrature() (positions []r3.Vec, weights []float64) {
 
 // String returns string representation of element type.
 func (Tetra10) String() string { return "TETRA10" }
+
+func (Tetra10) volume() float64 { return 1 }

@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"gonum.org/v1/gonum/mat"
+	"gonum.org/v1/gonum/spatial/r2"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
@@ -12,6 +13,29 @@ type Element interface {
 	LenNodes() int
 	// Dofs returns the degrees of freedom corresponding to each of the element's nodes.
 	Dofs() DofsFlag
+}
+
+type Isoparametric2 interface {
+	Element
+	// IsoparametricNodes returns the positions of the nodes relative to the origin
+	// of the element. Returned slice is of length LenNodes.
+	IsoparametricNodes() []r2.Vec
+	// Quadrature returns the desired quadrature integration positions and
+	// respective weights.
+	Quadrature() (positions []r2.Vec, weights []float64)
+	// Basis returns the form functions of the element evaluated at a position
+	// relative to the origin of the element. Returned slice is of length LenNodes.
+	Basis(r2.Vec) []float64
+	// BasisDiff returns the differentiated form functions of the element
+	// evaluated at a position relative to the origin of the element.
+	// The result first contains the form functions differentiated
+	// with respect to X and Y.
+	//  N = [ dN/dx ]
+	//      [ dN/dy ]   (row major form)
+	// Suggested way of initializing matrix:
+	//  dN := mat.NewDense(2, e.LenNodes(), e.BasisDiff(v))
+	// Returned slice is of length LenNodes*2.
+	BasisDiff(r2.Vec) []float64
 }
 
 // Isoparametric3 is a 3D element that employs the isoparametric formulation.

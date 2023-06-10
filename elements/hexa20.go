@@ -77,9 +77,10 @@ func (Hexa20) Basis(v r3.Vec) []float64 {
 // BasisDiff returns the differentiated form functions of the Hexa20 element
 // evaluated at v. The result first contains the form functions differentiated
 // with respect to X, then Y and finally Z.
-//      [ dN/dx ]
-//  N = | dN/dy |   (row major form)
-//      [ dN/dz ]
+//
+//	    [ dN/dx ]
+//	N = | dN/dy |   (row major form)
+//	    [ dN/dz ]
 func (Hexa20) BasisDiff(v r3.Vec) []float64 {
 	x2 := v.X * v.X
 	y2 := v.Y * v.Y
@@ -159,3 +160,5 @@ func (Hexa20) Quadrature() (positions []r3.Vec, weights []float64) {
 
 // String returns string representation of element type.
 func (Hexa20) String() string { return "HEXA20" }
+
+func (Hexa20) volume() float64 { return 8 }
