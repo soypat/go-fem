@@ -15,6 +15,10 @@ type Constituter interface {
 	Constitutive() (mat.Matrix, error)
 }
 
+type Constituter2D interface {
+	Constitutive2D() (mat.Matrix, error)
+}
+
 // IsotropicMaterial represents a material with no preferential direction
 // respecting mechanical properties.
 // i.e: Room temperature steel. 200GPa, Poisson=0.3
@@ -48,6 +52,33 @@ func (m IsotropicMaterial) ShearModulus() float64 {
 // https://en.wikipedia.org/wiki/Lam%C3%A9_parameters
 func (m IsotropicMaterial) lameParam2() float64 {
 	return m.E * m.Poisson / ((1 + m.Poisson) * (1 - 2*m.Poisson))
+}
+
+func (m IsotropicMaterial) PlainStess() Constituter2D {
+	E := m.E
+	nu := m.Poisson
+	factor := E / (1 - nu*nu)
+	return constituter2D{
+		m: mat.NewDense(3, 3, []float64{
+			factor, factor * nu, 0,
+			factor * nu, factor, 0,
+			0, 0, factor * (1 - nu) / 2,
+		}),
+	}
+}
+
+func (m IsotropicMaterial) PlainStrain() Constituter2D {
+	E := m.E
+	nu := m.Poisson
+	factor := E / (1 + nu) / (1 - 2*nu)
+	nuf := nu * factor
+	return constituter2D{
+		m: mat.NewDense(3, 3, []float64{
+			factor * (1 - nu), nuf, nuf,
+			nuf, factor * (1 - nu), nuf,
+			nuf, nuf, factor * (1 - 2*nu),
+		}),
+	}
 }
 
 // TransverselyIsotropicMaterial is a material that is transversally isotropic
@@ -126,4 +157,13 @@ func (ax AxisymmetricIsotropicMaterial) Constitutive() (mat.Matrix, error) {
 		0, 0, 0, 0, 0, g}
 	d := mat.NewDense(6, 6, data)
 	return d, nil
+}
+
+type constituter2D struct {
+	m   mat.Matrix
+	err error
+}
+
+func (c2d constituter2D) Constitutive2D() (mat.Matrix, error) {
+	return c2d.m, c2d.err
 }

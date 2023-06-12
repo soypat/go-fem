@@ -4,7 +4,7 @@ Go packages for finite element analysis/methods.
 #### Roadmap
 * ~~3D Isoparametric element assembly.~~
 * ~~Better sparse assembler~~ As fast as high performance libraries.
-* 2D Isoparametric element assembly.
+* ~~2D Isoparametric element assembly.~~
 * Shell and plate element assembly.
 * Arbitrary element assembly.
 * Better define Element3 API.

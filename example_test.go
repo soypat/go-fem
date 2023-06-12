@@ -6,6 +6,7 @@ import (
 	"github.com/soypat/go-fem"
 	"github.com/soypat/go-fem/elements"
 	"github.com/soypat/lap"
+	"gonum.org/v1/gonum/spatial/r2"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
@@ -47,7 +48,7 @@ func ExampleGeneralAssembler() {
 }
 
 // Calculates the stiffness matrix of a single isoparametric tetrahedron element.
-func ExampleAnisotripicConstitutive() {
+func ExampleTransverselyIsotropicMaterial_carbonFiber() {
 	carbonFiber := fem.TransverselyIsotropicMaterial{
 		Ex:        235e9,
 		Exy:       15e9,
@@ -70,16 +71,34 @@ func ExampleAnisotripicConstitutive() {
 	// ⎣       0         0         0         0         0   2.8e+10⎦
 }
 
-func ExampleAxisymmetricConstitutive() {
-	steel := fem.IsotropicMaterial{E: 1000, Poisson: 0.33}
-	steelAxisymmetric := fem.AxisymmetricIsotropicMaterial{
-		IsotropicMaterial: steel,
+func ExampleGeneralAssembler_AddIsoparametric2() {
+	// We assemble a single Quad4 element with a unitary isotropic material.
+	material := fem.IsotropicMaterial{E: 1, Poisson: 0.3}
+	nodes := []r3.Vec{
+		{X: 0, Y: 0},
+		{X: 1, Y: 0},
+		{X: 1, Y: 1},
+		{X: 0, Y: 1},
 	}
-	C, err := steelAxisymmetric.Constitutive()
+	elems := [][]int{
+		{0, 1, 2, 3},
+	}
+	ga := fem.NewGeneralAssembler(nodes, fem.DofPosX|fem.DofPosY)
+	err := ga.AddIsoparametric2(elements.Quad4{}, material.PlainStess(), len(elems), func(i int) (elem []int, xC r2.Vec) {
+		return elems[i], r2.Vec{}
+	})
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("C=\n%.3g", lap.Formatted(C))
+	fmt.Printf("K=\n%.3f", lap.Formatted(ga.Ksolid()))
 	//Output:
-
+	// K=
+	// ⎡ 0.495   0.179  -0.302  -0.014  -0.247  -0.179   0.055   0.014⎤
+	// ⎢ 0.179   0.495   0.014   0.055  -0.179  -0.247  -0.014  -0.302⎥
+	// ⎢-0.302   0.014   0.495  -0.179   0.055  -0.014  -0.247   0.179⎥
+	// ⎢-0.014   0.055  -0.179   0.495   0.014  -0.302   0.179  -0.247⎥
+	// ⎢-0.247  -0.179   0.055   0.014   0.495   0.179  -0.302  -0.014⎥
+	// ⎢-0.179  -0.247  -0.014  -0.302   0.179   0.495   0.014   0.055⎥
+	// ⎢ 0.055  -0.014  -0.247   0.179  -0.302   0.014   0.495  -0.179⎥
+	// ⎣ 0.014  -0.302   0.179  -0.247  -0.014   0.055  -0.179   0.495⎦
 }

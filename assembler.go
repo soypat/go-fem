@@ -14,8 +14,8 @@ import (
 type GeneralAssembler struct {
 	// Stiffness matrix of modelled solid.
 	ksolid lap.Sparse
-	dofs   DofsFlag
 	nodes  []r3.Vec
+	dofs   DofsFlag
 }
 
 // NewSymAssembler initializes a GeneralAssembler ready for use.
@@ -148,6 +148,7 @@ func assembleElement(V []float64, I, J, elemDofs []int, Ke *mat.Dense) {
 		row := Ke.RawRowView(i)
 		copy(V[ic:], row)
 		copy(J[ic:], elemDofs)
+		// TODO(soypat): could this be a copy or a optimized iteration?
 		for j := range elemDofs {
 			ix := ic + j
 			I[ix] = ei
@@ -184,6 +185,18 @@ func storeElemNode(dst []float64, allNodes []r3.Vec, elem []int) {
 		dst[offset] = n.X
 		dst[offset+1] = n.Y
 		dst[offset+2] = n.Z
+	}
+}
+
+func storeElemNode2d(dst []float64, allNodes []r3.Vec, elem []int) {
+	if len(dst) != 2*len(elem) {
+		panic("bad length")
+	}
+	for i := range elem {
+		offset := i * 2
+		n := allNodes[elem[i]]
+		dst[offset] = n.X
+		dst[offset+1] = n.Y
 	}
 }
 
