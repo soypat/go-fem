@@ -93,7 +93,7 @@ func (ga *GeneralAssembler) AddIsoparametric(elemT Isoparametric, c IsoConstitut
 			jac.Mul(dN, elemNod)
 			dJac := mat.Det(jac)
 			if dJac < 0 {
-				// return fmt.Errorf("negative determinant of jacobian of element #%d, Check node ordering", iele)
+				return fmt.Errorf("negative determinant of jacobian of element #%d, Check node ordering", iele)
 			} else if dJac < 1e-12 {
 				return fmt.Errorf("zero determinant of jacobian of element #%d, Check element shape for bad aspect ratio", iele)
 			}

@@ -1,5 +1,5 @@
 # go-fem
-Go packages for finite element analysis/methods.
+Extremely clean API toolkit for finite element analysis/methods.
 
 #### Roadmap
 * ~~3D Isoparametric element assembly.~~
