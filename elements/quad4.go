@@ -12,12 +12,18 @@ type Quad4 struct {
 	// QuadratureOrder is the order (a.k.a degree) of the quadrature used for integration.
 	// If zero a default value of 2 is used (2x2 gauss quadrature).
 	QuadratureOrder int
+	// NodeDofs is the number of degrees of freedom per node.
+	// If set to 0 a default value of fem.DofX|fem.DofY (0b11) is used.
+	NodeDofs fem.DofsFlag
 }
 
 var _ fem.Isoparametric = Quad4{}
 
 // Dofs returns the degrees of freedom of the nodes of the element.
-func (Quad4) Dofs() fem.DofsFlag {
+func (q4 Quad4) Dofs() fem.DofsFlag {
+	if q4.NodeDofs != 0 {
+		return q4.NodeDofs
+	}
 	return fem.DofPosX | fem.DofPosY
 }
 

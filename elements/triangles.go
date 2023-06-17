@@ -12,12 +12,18 @@ type Triangle3 struct {
 	// QuadratureOrder is the degree of the quadrature used for integration.
 	// If zero a default value of 1 is used (1 node gauss quadrature).
 	QuadratureOrder int
+	// NodeDofs is the number of degrees of freedom per node.
+	// If set to 0 a default value of fem.DofX|fem.DofY (0b11) is used.
+	NodeDofs fem.DofsFlag
 }
 
 var _ fem.Isoparametric = Triangle3{}
 
 // Dofs returns the degrees of freedom of the nodes of the element.
-func (Triangle3) Dofs() fem.DofsFlag {
+func (t3 Triangle3) Dofs() fem.DofsFlag {
+	if t3.NodeDofs != 0 {
+		return t3.NodeDofs
+	}
 	return fem.DofPosX | fem.DofPosY
 }
 

@@ -7,7 +7,11 @@ import (
 )
 
 // Tetra4 is the 3D linear strain tetrahedral element of 4 nodes.
-type Tetra4 struct{}
+type Tetra4 struct {
+	// NodeDofs is the number of degrees of freedom per node.
+	// If set to 0 a default value of fem.DofX|fem.DofY|fem.DofZ (0b111) is used.
+	NodeDofs fem.DofsFlag
+}
 
 var _ fem.Isoparametric = Tetra4{}
 

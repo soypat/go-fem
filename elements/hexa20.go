@@ -7,7 +7,14 @@ import (
 )
 
 // Hexa20 is the serendipity 3D quadratic strain hexahedral element of 20 nodes.
-type Hexa20 struct{}
+type Hexa20 struct {
+	// QuadratureOrder is the order (a.k.a degree) of the quadrature used for integration.
+	// If zero a default value of 3 is used (3x3x3 gauss quadrature).
+	QuadratureOrder int
+	// NodeDofs is the number of degrees of freedom per node.
+	// If set to 0 a default value of fem.DofX|fem.DofY|fem.DofZ (0b111) is used.
+	NodeDofs fem.DofsFlag
+}
 
 var _ fem.Isoparametric = Hexa20{}
 
@@ -15,7 +22,10 @@ var _ fem.Isoparametric = Hexa20{}
 func (Hexa20) LenNodes() int { return 20 }
 
 // Dofs returns the set dofs for the element's nodes.
-func (Hexa20) Dofs() fem.DofsFlag {
+func (h20 Hexa20) Dofs() fem.DofsFlag {
+	if h20.NodeDofs != 0 {
+		return h20.NodeDofs
+	}
 	return fem.DofPos
 }
 
@@ -153,8 +163,15 @@ func (Hexa20) BasisDiff(v r3.Vec) []float64 {
 }
 
 // Quadrature returns
-func (Hexa20) Quadrature() (positions []r3.Vec, weights []float64) {
-	positions, weights, _ = uniformGaussQuad(3, 3, 3)
+func (h8 Hexa20) Quadrature() (positions []r3.Vec, weights []float64) {
+	quad := h8.QuadratureOrder
+	if quad == 0 {
+		quad = 3
+	}
+	positions, weights, err := uniformGaussQuad(quad, quad, quad)
+	if err != nil {
+		panic(err)
+	}
 	return positions, weights
 }
 

@@ -23,7 +23,6 @@ func (ga *GeneralAssembler) AddIsoparametric(elemT Isoparametric, c IsoConstitut
 	if _c != dimC {
 		return fmt.Errorf("expected constitutive matrix to be square, got %dx%d", dimC, c)
 	}
-	elemT.Dofs()
 	if elemT == nil || c == nil || getElement == nil {
 		panic("nil argument to AddIsoparametric2") // This is very likely programmer error.
 	}
@@ -31,18 +30,24 @@ func (ga *GeneralAssembler) AddIsoparametric(elemT Isoparametric, c IsoConstitut
 	if err != nil {
 		return err
 	}
+
 	var (
-		NelemDofsPerNode = elemT.Dofs().Count()
+		// Number of integration dimensions per node. Usually spatial, so 2 for 2D problems and 3 for 3D problems.
+		NdimsPerNode = len(elemT.BasisDiff(r3.Vec{})) / elemT.LenNodes()
+		// Number of dofs per node. These contain the field variables.
+		// For example, for a 2D displacement problem these are the x and y displacements, so equal to 2.
+		// For a thermal problem there is always only 1 dof per node for the temperature, regardless of the number of spatial dimensions.
+		NdofsPerNode = elemT.Dofs().Count() //
 		// Number of nodes per element.
 		NnodperElem = elemT.LenNodes()
 		// Number of dofs per element.
-		NdofperElem = NnodperElem * NelemDofsPerNode
-		// Element stiffness matrix.
+		NdofperElem = NnodperElem * NdofsPerNode
+		// Element stiffness matrix. The results of integrating the element's stiffness matrix over the element's domain.
 		Ke = mat.NewDense(NdofperElem, NdofperElem, nil)
 		// number of columns in Compliance x NdofPerNode*nodesperelement
 		B = mat.NewDense(dimC, NdofperElem, nil)
-		// Differentiated form functions
-		dNxy = mat.NewDense(NelemDofsPerNode, NnodperElem, nil)
+		// Differentiated form functions with respect to the integration coordinates.
+		dNxy = mat.NewDense(NdimsPerNode, NnodperElem, nil)
 		// Number of dofs per node in model.
 		NmodelDofsPerNode = ga.dofs.Count()
 		// Quadrature integration points.
@@ -59,15 +64,16 @@ func (ga *GeneralAssembler) AddIsoparametric(elemT Isoparametric, c IsoConstitut
 	dNpg := make([]*mat.Dense, len(upg))
 	for ipg, pg := range upg {
 		Npg[ipg] = mat.NewVecDense(NnodperElem, elemT.Basis(pg))
-		dNpg[ipg] = mat.NewDense(NelemDofsPerNode, NnodperElem, elemT.BasisDiff(pg))
+		dNpg[ipg] = mat.NewDense(NdimsPerNode, NnodperElem, elemT.BasisDiff(pg))
 	}
 	// Allocate memory for auxiliary matrices.
-	jac := mat.NewDense(NelemDofsPerNode, NelemDofsPerNode, nil)
-	elemNodBacking := make([]float64, NelemDofsPerNode*NnodperElem)
+	jac := mat.NewDense(NdimsPerNode, NdimsPerNode, nil)
+	elemNodBacking := make([]float64, NdimsPerNode*NnodperElem)
 	elemDofs := make([]int, NmodelDofsPerNode*NnodperElem)
-	elemNod := mat.NewDense(NnodperElem, NelemDofsPerNode, elemNodBacking)
+	elemNod := mat.NewDense(NnodperElem, NdimsPerNode, elemNodBacking)
 	aux1 := mat.NewDense(NdofperElem, dimC, nil)
 	aux2 := mat.NewDense(NdofperElem, NdofperElem, nil)
+
 	NvalPerElem := NdofperElem * NdofperElem
 	spac := lap.NewSparseAccum(NvalPerElem * Nelem)
 
@@ -80,7 +86,7 @@ func (ga *GeneralAssembler) AddIsoparametric(elemT Isoparametric, c IsoConstitut
 		if x != (r3.Vec{}) || y != (r3.Vec{}) {
 			return fmt.Errorf("arbitrary constitutive orientation not implemented yet")
 		}
-		storeElemNode(elemNodBacking, ga.nodes, element, NelemDofsPerNode)
+		storeElemNode(elemNodBacking, ga.nodes, element, NdimsPerNode)
 		storeElemDofs(elemDofs, element, dofMapping, NmodelDofsPerNode)
 		for ipg := range upg {
 			dN := dNpg[ipg]

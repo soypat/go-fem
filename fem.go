@@ -109,7 +109,7 @@ func (d DofsFlag) String() (s string) {
 	}
 	for i := 0; d != 0; i++ {
 		if d&1 != 0 {
-			s += strconv.Itoa(i)
+			s += strconv.Itoa(i + 1)
 		} else {
 			s += "-"
 		}

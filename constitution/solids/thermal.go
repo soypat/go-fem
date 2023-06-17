@@ -20,13 +20,13 @@ func (k IsotropicConductivity) Solid3D() fem.IsoConstituter {
 			return 1
 		},
 	}
-	isoc.m, isoc.err = k.Constitutive()
+	isoc.C, isoc.err = k.Constitutive()
 	return isoc
 }
 
 func (k IsotropicConductivity) Plane() fem.IsoConstituter {
 	isoc := isoconstituter{
-		m: mat.NewDiagDense(2, []float64{k.K, k.K}),
+		C: mat.NewDiagDense(2, []float64{k.K, k.K}),
 		strain: func(B, elemNod, dN *mat.Dense, N *mat.VecDense) float64 {
 			B.Copy(dN)
 			return 1
@@ -36,9 +36,8 @@ func (k IsotropicConductivity) Plane() fem.IsoConstituter {
 }
 
 func (k IsotropicConductivity) Axisymmetric() fem.IsoConstituter {
-	const dims = 2
 	isoc := isoconstituter{
-		m: mat.NewDiagDense(dims, []float64{k.K, k.K}),
+		C: mat.NewDiagDense(2, []float64{k.K, k.K}),
 		strain: func(B, elemNod, dN *mat.Dense, N *mat.VecDense) float64 {
 			// Page 458, Cook, Concepts and Applications of Finite Element Analysis, Fourth edition.
 			// Eq. 12.1-16 for the case of axisymmetric elements.
@@ -49,8 +48,8 @@ func (k IsotropicConductivity) Axisymmetric() fem.IsoConstituter {
 				Nir := N.AtVec(i) * rInverse
 				Ndr := dN.At(0, i)
 				Ndz := dN.At(1, i)
-				B.Set(0, i*dims, Nir+Ndr)
-				B.Set(1, i*dims, Ndz)
+				B.Set(0, i, Nir+Ndr)
+				B.Set(1, i, Ndz)
 			}
 			return radius
 		},

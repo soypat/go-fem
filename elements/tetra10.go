@@ -8,11 +8,18 @@ import (
 
 // Tetra10 is the 3D quadratic strain tetrahedral element of 4 corner nodes
 // and 6 edge nodes.
-type Tetra10 struct{}
+type Tetra10 struct {
+	// NodeDofs is the number of degrees of freedom per node.
+	// If set to 0 a default value of fem.DofX|fem.DofY|fem.DofZ (0b111) is used.
+	NodeDofs fem.DofsFlag
+}
 
 var _ fem.Isoparametric = Tetra10{}
 
-func (Tetra10) Dofs() fem.DofsFlag {
+func (t10 Tetra10) Dofs() fem.DofsFlag {
+	if t10.NodeDofs != 0 {
+		return t10.NodeDofs
+	}
 	return fem.DofPos
 }
 

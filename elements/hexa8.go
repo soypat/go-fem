@@ -7,14 +7,24 @@ import (
 )
 
 // Hexa8 is the 3D linear strain hexahedral element of 8 nodes.
-type Hexa8 struct{}
+type Hexa8 struct {
+	// QuadratureOrder is the order (a.k.a degree) of the quadrature used for integration.
+	// If zero a default value of 2 is used (2x2x2 gauss quadrature).
+	QuadratureOrder int
+	// NodeDofs is the number of degrees of freedom per node.
+	// If set to 0 a default value of fem.DofX|fem.DofY|fem.DofZ (0b111) is used.
+	NodeDofs fem.DofsFlag
+}
 
 var _ fem.Isoparametric = Hexa8{}
 
 // LenNodes returns the number of nodes in the element.
 func (Hexa8) LenNodes() int { return 8 }
 
-func (Hexa8) Dofs() fem.DofsFlag {
+func (h8 Hexa8) Dofs() fem.DofsFlag {
+	if h8.NodeDofs != 0 {
+		return h8.NodeDofs
+	}
 	return fem.DofPos
 }
 
@@ -85,8 +95,15 @@ func (Hexa8) BasisDiff(v r3.Vec) []float64 {
 	}
 }
 
-func (Hexa8) Quadrature() (positions []r3.Vec, weights []float64) {
-	positions, weights, _ = uniformGaussQuad(2, 2, 2)
+func (h8 Hexa8) Quadrature() (positions []r3.Vec, weights []float64) {
+	quad := h8.QuadratureOrder
+	if quad == 0 {
+		quad = 2
+	}
+	positions, weights, err := uniformGaussQuad(quad, quad, quad)
+	if err != nil {
+		panic(err)
+	}
 	return positions, weights
 }
 

@@ -36,7 +36,7 @@ func (m Isotropic) Constitutive() (mat.Matrix, error) {
 
 func (m Isotropic) Solid3D() fem.IsoConstituter {
 	var isoc isoconstituter
-	isoc.m, isoc.err = m.Constitutive()
+	isoc.C, isoc.err = m.Constitutive()
 	isoc.strain = SetStrainDisplacementMatrixXYZ
 	return isoc
 }
@@ -57,7 +57,7 @@ func (m Isotropic) PlaneStess() fem.IsoConstituter {
 	nu := m.Poisson
 	factor := E / (1 - nu*nu)
 	return isoconstituter{
-		m: mat.NewDense(3, 3, []float64{
+		C: mat.NewDense(3, 3, []float64{
 			factor, factor * nu, 0,
 			factor * nu, factor, 0,
 			0, 0, factor * (1 - nu) / 2,
@@ -72,7 +72,7 @@ func (m Isotropic) PlaneStrain() fem.IsoConstituter {
 	factor := E / (1 + nu) / (1 - 2*nu)
 	nuf := nu * factor
 	return isoconstituter{
-		m: mat.NewDense(3, 3, []float64{
+		C: mat.NewDense(3, 3, []float64{
 			factor * (1 - nu), nuf, nuf,
 			nuf, factor * (1 - nu), nuf,
 			nuf, nuf, factor * (1 - 2*nu),
@@ -96,7 +96,7 @@ func (m Isotropic) Axisymmetric() fem.IsoConstituter {
 	}
 	d := mat.NewDense(4, 4, data)
 	return isoconstituter{
-		m:      d,
+		C:      d,
 		strain: SetStrainDisplacementMatrixAxisymmetric,
 	}
 }
