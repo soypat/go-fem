@@ -31,6 +31,10 @@ import (
 )
 
 func main() {
+	// We assemble a single 2D axisymmetric element.
+	// With a young modulus of 1000 and a poisson ratio of 0.33.
+	// The units are undefined. If using SI, E would be 1kPa and node positions
+	// would be in meters.
 	material := solids.Isotropic{E: 1000, Poisson: 0.33}
 	nodes := []r3.Vec{
 		{X: 20, Y: 0},
@@ -41,9 +45,10 @@ func main() {
 	elems := [][4]int{
 		{0, 1, 2, 3},
 	}
+	elemType := elements.Quad4{}
 
-	ga := fem.NewGeneralAssembler(nodes, fem.DofPosX|fem.DofPosY)
-	err := ga.AddIsoparametric(elements.Quad4{}, material.Axisymmetric(), 1, func(i int) (elem []int, xC, yC r3.Vec) {
+	ga := fem.NewGeneralAssembler(nodes, elemType.Dofs())
+	err := ga.AddIsoparametric(elemType, material.Axisymmetric(), 1, func(i int) (elem []int, xC, yC r3.Vec) {
 		return elems[i][:], r3.Vec{}, r3.Vec{}
 	})
 	if err != nil {

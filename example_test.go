@@ -23,7 +23,7 @@ func ExampleGeneralAssembler() {
 	elems := [][]int{
 		{0, 1, 2, 3}, // one single element.
 	}
-	ga := fem.NewGeneralAssembler(nod, fem.DofPos)
+	ga := fem.NewGeneralAssembler(nod, elemType.Dofs())
 	err := ga.AddIsoparametric(elemType, steel.Solid3D(), len(elems), func(i int) ([]int, r3.Vec, r3.Vec) {
 		return elems[i], r3.Vec{}, r3.Vec{}
 	})
@@ -56,11 +56,13 @@ func ExampleGeneralAssembler_AddIsoparametric_quad4PlaneStress() {
 		{X: 1, Y: 1},
 		{X: 0, Y: 1},
 	}
+	elemType := elements.Quad4{}
 	elems := [][]int{
 		{0, 1, 2, 3},
 	}
-	ga := fem.NewGeneralAssembler(nodes, fem.DofPosX|fem.DofPosY)
-	err := ga.AddIsoparametric(elements.Quad4{}, material.PlaneStess(), len(elems), func(i int) (elem []int, xC, yC r3.Vec) {
+
+	ga := fem.NewGeneralAssembler(nodes, elemType.Dofs())
+	err := ga.AddIsoparametric(elemType, material.PlaneStess(), len(elems), func(i int) (elem []int, xC, yC r3.Vec) {
 		return elems[i], r3.Vec{}, r3.Vec{}
 	})
 	if err != nil {
