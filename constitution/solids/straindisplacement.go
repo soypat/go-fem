@@ -46,13 +46,13 @@ func SetStrainDisplacementMatrixAxisymmetric(dstB, elemNod, dN *mat.Dense, N *ma
 	rInverse := 1 / radius
 	for i := 0; i < NnodperElem; i++ {
 		Ni := N.AtVec(i)
-		dNxy0 := dN.At(0, i)
-		dNxy1 := dN.At(1, i)
-		dstB.Set(0, i*dims, dNxy0)
+		Ndr := dN.At(0, i)
+		Ndz := dN.At(1, i)
+		dstB.Set(0, i*dims, Ndr)
 		dstB.Set(1, i*dims, Ni*rInverse)
-		dstB.Set(2, i*dims+1, dNxy1)
-		dstB.Set(3, i*dims, dNxy1)
-		dstB.Set(3, i*dims+1, dNxy0)
+		dstB.Set(2, i*dims+1, Ndz)
+		dstB.Set(3, i*dims, Ndz)
+		dstB.Set(3, i*dims+1, Ndr)
 	}
 	return radius
 }
