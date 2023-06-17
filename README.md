@@ -5,69 +5,65 @@ Go packages for finite element analysis/methods.
 * ~~3D Isoparametric element assembly.~~
 * ~~Better sparse assembler~~ As fast as high performance libraries.
 * ~~2D Isoparametric element assembly.~~
+* ~~Arbitrary Isoparametric element assembly.~~
+* Stress extraction from displacements.
 * Shell and plate element assembly.
-* Arbitrary element assembly.
 * Better define Element3 API.
 * Add constraints assembly.
   - Lagrange Multipliers or Penalty method.
 * Stiffness matrix utility functions for better conditioning and troubleshooting.
-* Stress extraction from displacements.
 
 
-#### Example
+
+#### Axisymmetric assembly example
 ```go
 package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/soypat/go-fem"
+	"github.com/soypat/go-fem/constitution/solids"
 	"github.com/soypat/go-fem/elements"
-	"gonum.org/v1/gonum/mat"
+	"github.com/soypat/lap"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
-// Calculates the stiffness matrix of a single isoparametric tetrahedron element.
-// and prints the result.
 func main() {
-	elemType := elements.Tetra4{}
-	steel := fem.IsotropicMaterial{E: 200e9, Poisson: 0.3}
-	nod := []r3.Vec{
-		{X: 0, Y: 0, Z: 0},
-		{X: 1}, // is (1,0,0) point
-		{Y: 1},
-		{Z: 1},
+	material := solids.Isotropic{E: 1000, Poisson: 0.33}
+	nodes := []r3.Vec{
+		{X: 20, Y: 0},
+		{X: 30, Y: 0},
+		{X: 30, Y: 1},
+		{X: 20, Y: 1},
 	}
-	elems := [][]int{
-		{0, 1, 2, 3}, // one single element.
+	elems := [][4]int{
+		{0, 1, 2, 3},
 	}
-	ga := fem.NewGeneralAssembler(nod, fem.DofPos)
-	err := ga.AddIsoparametric3(elemType, steel, len(elems), func(i int) ([]int, r3.Vec, r3.Vec) {
-		return elems[i], r3.Vec{}, r3.Vec{}
+
+	ga := fem.NewGeneralAssembler(nodes, fem.DofPosX|fem.DofPosY)
+	err := ga.AddIsoparametric(elements.Quad4{}, material.Axisymmetric(), 1, func(i int) (elem []int, xC, yC r3.Vec) {
+		return elems[i][:], r3.Vec{}, r3.Vec{}
 	})
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	fmt.Printf("K=\n%.5g", mat.Formatted(ga.Ksolid()))
+	fmt.Printf("K=\n%.3g\n", lap.Formatted(ga.Ksolid()))
 }
 ```
 
 **Output:**
 ```
-
 K=
-⎡ 4.2308e+11   1.9231e+11   1.9231e+11  -2.6923e+11  -7.6923e+10  -7.6923e+10  -7.6923e+10  -1.1538e+11            0  -7.6923e+10            0  -1.1538e+11⎤
-⎢ 1.9231e+11   4.2308e+11   1.9231e+11  -1.1538e+11  -7.6923e+10            0  -7.6923e+10  -2.6923e+11  -7.6923e+10            0  -7.6923e+10  -1.1538e+11⎥
-⎢ 1.9231e+11   1.9231e+11   4.2308e+11  -1.1538e+11            0  -7.6923e+10            0  -1.1538e+11  -7.6923e+10  -7.6923e+10  -7.6923e+10  -2.6923e+11⎥
-⎢-2.6923e+11  -1.1538e+11  -1.1538e+11   2.6923e+11            0            0            0   1.1538e+11            0            0            0   1.1538e+11⎥
-⎢-7.6923e+10  -7.6923e+10            0            0   7.6923e+10            0   7.6923e+10            0            0            0            0            0⎥
-⎢-7.6923e+10            0  -7.6923e+10            0            0   7.6923e+10            0            0            0   7.6923e+10            0            0⎥
-⎢-7.6923e+10  -7.6923e+10            0            0   7.6923e+10            0   7.6923e+10            0            0            0            0            0⎥
-⎢-1.1538e+11  -2.6923e+11  -1.1538e+11   1.1538e+11            0            0            0   2.6923e+11            0            0            0   1.1538e+11⎥
-⎢          0  -7.6923e+10  -7.6923e+10            0            0            0            0            0   7.6923e+10            0   7.6923e+10            0⎥
-⎢-7.6923e+10            0  -7.6923e+10            0            0   7.6923e+10            0            0            0   7.6923e+10            0            0⎥
-⎢          0  -7.6923e+10  -7.6923e+10            0            0            0            0            0   7.6923e+10            0   7.6923e+10            0⎥
-⎣-1.1538e+11  -1.1538e+11  -2.6923e+11   1.1538e+11            0            0            0   1.1538e+11            0            0            0   2.6923e+11⎦
+⎡ 2.93e+04   5.23e+03   1.45e+04   2.06e+03  -1.63e+04  -6.45e+03  -2.77e+04       -848⎤
+⎢ 5.23e+03   1.11e+05  -2.36e+03   6.14e+04  -7.37e+03  -6.19e+04        848  -1.11e+05⎥
+⎢ 1.45e+04  -2.36e+03    3.6e+04  -8.59e+03  -3.37e+04   3.58e+03  -1.63e+04   7.37e+03⎥
+⎢ 2.06e+03   6.14e+04  -8.59e+03   1.36e+05  -3.58e+03  -1.36e+05   6.45e+03  -6.19e+04⎥
+⎢-1.63e+04  -7.37e+03  -3.37e+04  -3.58e+03    3.6e+04   8.59e+03   1.45e+04   2.36e+03⎥
+⎢-6.45e+03  -6.19e+04   3.58e+03  -1.36e+05   8.59e+03   1.36e+05  -2.06e+03   6.14e+04⎥
+⎢-2.77e+04        848  -1.63e+04   6.45e+03   1.45e+04  -2.06e+03   2.93e+04  -5.23e+03⎥
+⎣     -848  -1.11e+05   7.37e+03  -6.19e+04   2.36e+03   6.14e+04  -5.23e+03   1.11e+05⎦
 ```
 
 #### Benchmarks

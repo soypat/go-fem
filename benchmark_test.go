@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/soypat/go-fem"
+	"github.com/soypat/go-fem/constitution/solids"
 	"github.com/soypat/go-fem/elements"
 	"github.com/soypat/manigold/tetra"
 	"gonum.org/v1/gonum/spatial/r3"
@@ -28,7 +29,7 @@ func BenchmarkTetra4Assembly(b *testing.B) {
 	const dim = 1.0
 	box := r3.Box{Max: r3.Vec{X: dim, Y: dim, Z: dim}}
 	elemT := elements.Tetra4{}
-	material := fem.IsotropicMaterial{E: 200e9, Poisson: 0.3}
+	material := solids.Isotropic{E: 200e9, Poisson: 0.3}
 	for _, div := range []float64{2, 8, 16, 32, 48} {
 		bcc := tetra.MakeBCC(box, dim/div)
 		nodes, tetras := bcc.MeshTetraBCC()
@@ -37,7 +38,7 @@ func BenchmarkTetra4Assembly(b *testing.B) {
 			var ga *fem.GeneralAssembler
 			for i := 0; i < b.N; i++ {
 				ga = fem.NewGeneralAssembler(nodes, fem.DofPos)
-				err := ga.AddIsoparametric3(elemT, material, len(tetras), func(i int) (elem []int, xC r3.Vec, yC r3.Vec) {
+				err := ga.AddIsoparametric(elemT, material.Solid3D(), len(tetras), func(i int) (elem []int, xC r3.Vec, yC r3.Vec) {
 					return tetras[i][:], xC, yC
 				})
 				if err != nil {

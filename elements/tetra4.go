@@ -9,7 +9,7 @@ import (
 // Tetra4 is the 3D linear strain tetrahedral element of 4 nodes.
 type Tetra4 struct{}
 
-var _ fem.Isoparametric3 = Tetra4{}
+var _ fem.Isoparametric = Tetra4{}
 
 func (Tetra4) Dofs() fem.DofsFlag {
 	return fem.DofPos

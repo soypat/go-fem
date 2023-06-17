@@ -10,7 +10,7 @@ import (
 // and 6 edge nodes.
 type Tetra10 struct{}
 
-var _ fem.Isoparametric3 = Tetra10{}
+var _ fem.Isoparametric = Tetra10{}
 
 func (Tetra10) Dofs() fem.DofsFlag {
 	return fem.DofPos

@@ -9,7 +9,7 @@ import (
 // Hexa20 is the serendipity 3D quadratic strain hexahedral element of 20 nodes.
 type Hexa20 struct{}
 
-var _ fem.Isoparametric3 = Hexa20{}
+var _ fem.Isoparametric = Hexa20{}
 
 // LenNodes returns the number of nodes in the element.
 func (Hexa20) LenNodes() int { return 20 }

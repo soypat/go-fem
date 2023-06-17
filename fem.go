@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/gonum/spatial/r2"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
@@ -15,31 +14,8 @@ type Element interface {
 	Dofs() DofsFlag
 }
 
-type Isoparametric2 interface {
-	Element
-	// IsoparametricNodes returns the positions of the nodes relative to the origin
-	// of the element. Returned slice is of length LenNodes.
-	IsoparametricNodes() []r2.Vec
-	// Quadrature returns the desired quadrature integration positions and
-	// respective weights.
-	Quadrature() (positions []r2.Vec, weights []float64)
-	// Basis returns the form functions of the element evaluated at a position
-	// relative to the origin of the element. Returned slice is of length LenNodes.
-	Basis(r2.Vec) []float64
-	// BasisDiff returns the differentiated form functions of the element
-	// evaluated at a position relative to the origin of the element.
-	// The result first contains the form functions differentiated
-	// with respect to X and Y.
-	//  N = [ dN/dx ]
-	//      [ dN/dy ]   (row major form)
-	// Suggested way of initializing matrix:
-	//  dN := mat.NewDense(2, e.LenNodes(), e.BasisDiff(v))
-	// Returned slice is of length LenNodes*2.
-	BasisDiff(r2.Vec) []float64
-}
-
-// Isoparametric3 is a 3D element that employs the isoparametric formulation.
-type Isoparametric3 interface {
+// Isoparametric is a 3D element that employs the isoparametric formulation.
+type Isoparametric interface {
 	Element
 	// BasisNodes returns the positions of the nodes relative to the origin
 	// of the element. Returned slice is of length LenNodes.
@@ -70,6 +46,19 @@ type Element3 interface {
 	Element
 	CopyK(dst *mat.Dense, elementNodes []r3.Vec) error
 	SetConstitutive(c Constituter) error
+}
+
+// Constituter represents the homogenous properties of a medium
+// that can then be used to model solids or other continuous field problems.
+// For solids it returns the unmodified constitutive tensor (Generalized Hookes law).
+// The shear modulii should not be halved.
+type Constituter interface {
+	Constitutive() (mat.Matrix, error)
+}
+
+type IsoConstituter interface {
+	Constituter
+	SetStrainDisplacementMatrix(dstB, elemNodes, dN *mat.Dense, N *mat.VecDense) (scale float64)
 }
 
 // DofsFlag holds bitwise information of degrees of freedom.
@@ -115,12 +104,16 @@ func (d DofsFlag) Has(q DofsFlag) bool {
 
 // String returns a human readable representation of which dofs are set in d.
 func (d DofsFlag) String() (s string) {
-	for i := 0; i < maxDofsPerNode; i++ {
-		if d.Has(1 << i) {
+	if d == 0 {
+		return "none"
+	}
+	for i := 0; d != 0; i++ {
+		if d&1 != 0 {
 			s += strconv.Itoa(i)
 		} else {
 			s += "-"
 		}
+		d = d >> 1
 	}
 	return s
 }

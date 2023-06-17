@@ -10,15 +10,17 @@ import (
 	"time"
 
 	"github.com/soypat/go-fem"
+	"github.com/soypat/go-fem/constitution/solids"
 	"github.com/soypat/go-fem/elements"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
 func main() {
+	material := solids.Isotropic{E: 4.8e3, Poisson: 0.34}
 	nodes, elem := feaModel()
 	ga := fem.NewGeneralAssembler(nodes, fem.DofPos)
 	tstart := time.Now()
-	err := ga.AddIsoparametric3(elements.Hexa8{}, fem.IsotropicMaterial{E: 4.8e3, Poisson: 0.34}, len(elem), func(i int) ([]int, r3.Vec, r3.Vec) {
+	err := ga.AddIsoparametric(elements.Hexa8{}, material.Solid3D(), len(elem), func(i int) ([]int, r3.Vec, r3.Vec) {
 		return elem[i][:], r3.Vec{}, r3.Vec{}
 	})
 

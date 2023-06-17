@@ -4,16 +4,16 @@ import (
 	"fmt"
 
 	"github.com/soypat/go-fem"
+	"github.com/soypat/go-fem/constitution/solids"
 	"github.com/soypat/go-fem/elements"
 	"github.com/soypat/lap"
-	"gonum.org/v1/gonum/spatial/r2"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
 // Calculates the stiffness matrix of a single isoparametric tetrahedron element.
 func ExampleGeneralAssembler() {
 	elemType := elements.Tetra4{}
-	steel := fem.IsotropicMaterial{E: 200e9, Poisson: 0.3}
+	steel := solids.Isotropic{E: 200e9, Poisson: 0.3}
 	nod := []r3.Vec{
 		{X: 0, Y: 0, Z: 0},
 		{X: 1}, // is (1,0,0) point
@@ -24,7 +24,7 @@ func ExampleGeneralAssembler() {
 		{0, 1, 2, 3}, // one single element.
 	}
 	ga := fem.NewGeneralAssembler(nod, fem.DofPos)
-	err := ga.AddIsoparametric3(elemType, steel, len(elems), func(i int) ([]int, r3.Vec, r3.Vec) {
+	err := ga.AddIsoparametric(elemType, steel.Solid3D(), len(elems), func(i int) ([]int, r3.Vec, r3.Vec) {
 		return elems[i], r3.Vec{}, r3.Vec{}
 	})
 	if err != nil {
@@ -47,33 +47,9 @@ func ExampleGeneralAssembler() {
 	// ⎣-1.1538e+11  -1.1538e+11  -2.6923e+11   1.1538e+11            0            0            0   1.1538e+11            0            0            0   2.6923e+11⎦
 }
 
-// Calculates the stiffness matrix of a single isoparametric tetrahedron element.
-func ExampleTransverselyIsotropicMaterial_carbonFiber() {
-	carbonFiber := fem.TransverselyIsotropicMaterial{
-		Ex:        235e9,
-		Exy:       15e9,
-		Gxy:       28e9,
-		PoissonXY: 0.2,
-		PoissonYZ: 0.25,
-	}
-	C, err := carbonFiber.Constitutive()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("C=\n%.3g", lap.Formatted(C))
-	//Output:
-	// C=
-	// ⎡2.37e+11  4.03e+09  4.03e+09         0         0         0⎤
-	// ⎢4.03e+09  1.61e+10  4.07e+09         0         0         0⎥
-	// ⎢4.03e+09  4.07e+09  1.61e+10         0         0         0⎥
-	// ⎢       0         0         0     6e+09         0         0⎥
-	// ⎢       0         0         0         0   2.8e+10         0⎥
-	// ⎣       0         0         0         0         0   2.8e+10⎦
-}
-
-func ExampleGeneralAssembler_AddIsoparametric2() {
+func ExampleGeneralAssembler_AddIsoparametric_quad4PlaneStress() {
 	// We assemble a single Quad4 element with a unitary isotropic material.
-	material := fem.IsotropicMaterial{E: 1, Poisson: 0.3}
+	material := solids.Isotropic{E: 1, Poisson: 0.3}
 	nodes := []r3.Vec{
 		{X: 0, Y: 0},
 		{X: 1, Y: 0},
@@ -84,8 +60,8 @@ func ExampleGeneralAssembler_AddIsoparametric2() {
 		{0, 1, 2, 3},
 	}
 	ga := fem.NewGeneralAssembler(nodes, fem.DofPosX|fem.DofPosY)
-	err := ga.AddIsoparametric2(elements.Quad4{}, material.PlainStess(), len(elems), func(i int) (elem []int, xC r2.Vec) {
-		return elems[i], r2.Vec{}
+	err := ga.AddIsoparametric(elements.Quad4{}, material.PlaneStess(), len(elems), func(i int) (elem []int, xC, yC r3.Vec) {
+		return elems[i], r3.Vec{}, r3.Vec{}
 	})
 	if err != nil {
 		panic(err)

@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/soypat/go-fem"
-	"gonum.org/v1/gonum/spatial/r2"
+	"gonum.org/v1/gonum/spatial/r3"
 )
 
 // Quad8 is the 8 node 2D quadrilateral element, also known as Serendipity element
@@ -15,7 +15,7 @@ type Quad8 struct {
 	QuadratureOrder int
 }
 
-var _ fem.Isoparametric2 = Quad8{}
+var _ fem.Isoparametric = Quad8{}
 
 // Dofs returns the degrees of freedom of the nodes of the element.
 func (Quad8) Dofs() fem.DofsFlag {
@@ -26,8 +26,8 @@ func (Quad8) Dofs() fem.DofsFlag {
 func (Quad8) LenNodes() int { return 8 }
 
 // IsoparametricNodes returns the positions of the nodes relative to the origin of the element.
-func (Quad8) IsoparametricNodes() []r2.Vec {
-	return []r2.Vec{
+func (Quad8) IsoparametricNodes() []r3.Vec {
+	return []r3.Vec{
 		0: {X: -1, Y: -1},
 		1: {X: 1, Y: -1},
 		2: {X: 1, Y: 1},
@@ -40,7 +40,7 @@ func (Quad8) IsoparametricNodes() []r2.Vec {
 }
 
 // Basis returns the form functions of the Quad8 element evaluated at v.
-func (Quad8) Basis(v r2.Vec) []float64 {
+func (Quad8) Basis(v r3.Vec) []float64 {
 	x, y := v.X, v.Y
 	return []float64{
 		0.25 * (1 - x) * (1 - y) * (-1 - x - y),
@@ -55,7 +55,7 @@ func (Quad8) Basis(v r2.Vec) []float64 {
 }
 
 // BasisDiff returns the differentiated form functions of the Quad8 element evaluated at v.
-func (Quad8) BasisDiff(v r2.Vec) []float64 {
+func (Quad8) BasisDiff(v r3.Vec) []float64 {
 	x, y := v.X, v.Y
 	return []float64{
 		// w.r.t X
@@ -80,7 +80,7 @@ func (Quad8) BasisDiff(v r2.Vec) []float64 {
 }
 
 // Quadrature returns the quadrature nodes and weights of the element.
-func (q8 Quad8) Quadrature() ([]r2.Vec, []float64) {
+func (q8 Quad8) Quadrature() ([]r3.Vec, []float64) {
 	quad := q8.order()
 	pos, w, err := uniformGaussQuad2d(quad, quad)
 	if err != nil {

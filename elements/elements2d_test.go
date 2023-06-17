@@ -8,7 +8,7 @@ import (
 	"github.com/soypat/go-fem"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/floats/scalar"
-	"gonum.org/v1/gonum/spatial/r2"
+	"gonum.org/v1/gonum/spatial/r3"
 )
 
 var elements2 = []iso2{
@@ -19,7 +19,7 @@ var elements2 = []iso2{
 }
 
 type iso2 interface {
-	fem.Isoparametric2
+	fem.Isoparametric
 	fmt.Stringer
 	area() float64
 }
@@ -48,16 +48,16 @@ func TestBasisDiff2d(t *testing.T) {
 		tol = 1e-11
 		h   = 1e-4
 	)
-	ix := r2.Vec{X: h / 2}
-	iy := r2.Vec{Y: h / 2}
+	ix := r3.Vec{X: h / 2}
+	iy := r3.Vec{Y: h / 2}
 	rng := rand.New(rand.NewSource(1))
 	for _, element := range elements2 {
 		t.Run(element.String(), func(t *testing.T) {
 			for i := 0; i < 100; i++ {
-				p := r2.Vec{X: rng.Float64(), Y: rng.Float64()}
+				p := r3.Vec{X: rng.Float64(), Y: rng.Float64()}
 				// X calculation
-				pxp := r2.Add(p, ix)
-				pxm := r2.Sub(p, ix)
+				pxp := r3.Add(p, ix)
+				pxm := r3.Sub(p, ix)
 				ffxm := element.Basis(pxm)
 				ffxp := element.Basis(pxp)
 				// Differentiate and store in ffxp.
@@ -70,8 +70,8 @@ func TestBasisDiff2d(t *testing.T) {
 				}
 
 				// Y Differentiate
-				pyp := r2.Add(p, iy)
-				pym := r2.Sub(p, iy)
+				pyp := r3.Add(p, iy)
+				pym := r3.Sub(p, iy)
 				ffym := element.Basis(pym)
 				ffyp := element.Basis(pyp)
 				floats.Sub(ffyp, ffym)

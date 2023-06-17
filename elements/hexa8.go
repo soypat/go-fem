@@ -9,7 +9,7 @@ import (
 // Hexa8 is the 3D linear strain hexahedral element of 8 nodes.
 type Hexa8 struct{}
 
-var _ fem.Isoparametric3 = Hexa8{}
+var _ fem.Isoparametric = Hexa8{}
 
 // LenNodes returns the number of nodes in the element.
 func (Hexa8) LenNodes() int { return 8 }

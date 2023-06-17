@@ -4,17 +4,17 @@ import (
 	"strconv"
 
 	"github.com/soypat/go-fem"
-	"gonum.org/v1/gonum/spatial/r2"
+	"gonum.org/v1/gonum/spatial/r3"
 )
 
-// Quad4 is the 4 node 2D quadrilateral element.
+// Quad43d3d is the 4 node 2D quadrilateral element.
 type Quad4 struct {
 	// QuadratureOrder is the order (a.k.a degree) of the quadrature used for integration.
 	// If zero a default value of 2 is used (2x2 gauss quadrature).
 	QuadratureOrder int
 }
 
-var _ fem.Isoparametric2 = Quad4{}
+var _ fem.Isoparametric = Quad4{}
 
 // Dofs returns the degrees of freedom of the nodes of the element.
 func (Quad4) Dofs() fem.DofsFlag {
@@ -25,8 +25,8 @@ func (Quad4) Dofs() fem.DofsFlag {
 func (Quad4) LenNodes() int { return 4 }
 
 // IsoparametricNodes returns the positions of the nodes relative to the origin of the element.
-func (Quad4) IsoparametricNodes() []r2.Vec {
-	return []r2.Vec{
+func (Quad4) IsoparametricNodes() []r3.Vec {
+	return []r3.Vec{
 		0: {X: -1, Y: -1},
 		1: {X: 1, Y: -1},
 		2: {X: 1, Y: 1},
@@ -34,8 +34,8 @@ func (Quad4) IsoparametricNodes() []r2.Vec {
 	}
 }
 
-// Basis returns the form functions of the Quad4 element evaluated at v.
-func (Quad4) Basis(v r2.Vec) []float64 {
+// Basis returns the form functions of the Quad43d element evaluated at v.
+func (Quad4) Basis(v r3.Vec) []float64 {
 	x, y := v.X, v.Y
 	return []float64{
 		0.25 * (1 - x) * (1 - y),
@@ -45,8 +45,8 @@ func (Quad4) Basis(v r2.Vec) []float64 {
 	}
 }
 
-// BasisDiff returns the differentiated form functions of the Quad4 element evaluated at v.
-func (Quad4) BasisDiff(v r2.Vec) []float64 {
+// BasisDiff returns the differentiated form functions of the Quad43d element evaluated at v.
+func (Quad4) BasisDiff(v r3.Vec) []float64 {
 	x, y := v.X, v.Y
 	return []float64{
 		// w.r.t X
@@ -63,8 +63,9 @@ func (Quad4) BasisDiff(v r2.Vec) []float64 {
 }
 
 // Quadrature returns the quadrature nodes and weights of the element.
-func (q8 Quad4) Quadrature() ([]r2.Vec, []float64) {
+func (q8 Quad4) Quadrature() ([]r3.Vec, []float64) {
 	quad := q8.order()
+	// pos, w, err := uniformGaussQuad2d(quad, quad)
 	pos, w, err := uniformGaussQuad2d(quad, quad)
 	if err != nil {
 		panic(err)
@@ -81,6 +82,6 @@ func (q4 Quad4) order() int {
 }
 
 // String returns a string representation of the element.
-func (q4 Quad4) String() string { return "QUAD4(order=" + strconv.Itoa(q4.order()) + ")" }
+func (q4 Quad4) String() string { return "Quad43d(order=" + strconv.Itoa(q4.order()) + ")" }
 
 func (Quad4) area() float64 { return 4 }

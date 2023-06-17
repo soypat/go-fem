@@ -19,7 +19,7 @@ var elements3 = []iso3{
 }
 
 type iso3 interface {
-	fem.Isoparametric3
+	fem.Isoparametric
 	fmt.Stringer
 	volume() float64
 }
