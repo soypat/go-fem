@@ -122,3 +122,18 @@ func exampleDense_copyBlocks() {
 	}
 	fmt.Println(mat.Formatted(&m))
 }
+
+type Vector interface {
+	SetVec(i int, v float64)
+	ReuseAsVec(int)
+}
+
+var _ Vector = (*mat.VecDense)(nil)
+var _ Matrix = (*mat.Dense)(nil)
+
+// var _ Vector = (*lap.DenseV)(nil)
+
+type Matrix interface {
+	Set(i, j int, v float64)
+	ReuseAs(int, int)
+}

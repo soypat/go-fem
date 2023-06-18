@@ -37,23 +37,39 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("K=\n%.3g\n", lap.Formatted(ga.Ksolid()))
+	// var jac, dNxy mat.Dense
+	// upg, wpg := elemType.Quadrature()
+	// err = ga.IntegrateIsoparametric(elemType, 1, func(i int) (elem []int, xC, yC r3.Vec) {
+	// 	return elems[i][:], r3.Vec{}, r3.Vec{}
+	// }, func(elemIdx int, elemNodes []float64, elemDofs []int) error {
+	// 	forceElem := lap.NewDenseVector(len(elemDofs), nil)
 
-	var forces lap.Vector
-	forces = lap.NewDenseVector(ga.TotalDofs(), []float64{1.3750 * 1e3, 0 * 1e3, 1.7917 * 1e3, 0 * 1e3, 1.7917 * 1e3, 0 * 1e3, 1.3750 * 1e3, 0})
-	fixedDofs := []int{1}
-	forces = lap.SliceExcludeVec(forces, fixedDofs)
+	// 	for ipg := range dNpg {
+	// 		N := Npg[ipg]
+	// 		jac.Mul(dNpg[ipg], elemNodes)
+	// 		dNxy.Solve(&jac, dNpg[ipg])
+	// 		radius := lap.Dot(N, elemNodes.ColView(0))
+	// 		forceElem.AddVec(forceElem, N)
+	// 		fmt.Printf("J%d%d=\n%.3g\n", elemIdx, ipg, lap.Formatted(&jac))
+	// 	}
+	// 	return nil
+	// })
+	// var forces lap.Vector
+	// forces = lap.NewDenseVector(ga.TotalDofs(), []float64{1.3750 * 1e3, 0 * 1e3, 1.7917 * 1e3, 0 * 1e3, 1.7917 * 1e3, 0 * 1e3, 1.3750 * 1e3, 0})
+	// fixedDofs := []int{1}
+	// forces = lap.SliceExcludeVec(forces, fixedDofs)
 
-	var K lap.Matrix
-	K = ga.Ksolid()
-	K = lap.SliceExclude(K, fixedDofs, fixedDofs)
-	var displacementsReduced mat.VecDense
-	err = displacementsReduced.SolveVec(lapmat{K}, lapvec{forces})
-	if err != nil {
-		log.Fatal(err)
-	}
-	displacements := lap.NewDenseVector(ga.TotalDofs(), nil)
-	copied := lap.SliceExcludeVec(displacements, fixedDofs).CopyVec(&displacementsReduced)
-	fmt.Println("displacements", copied, lap.Formatted(displacements))
+	// var K lap.Matrix
+	// K = ga.Ksolid()
+	// K = lap.SliceExclude(K, fixedDofs, fixedDofs)
+	// var displacementsReduced mat.VecDense
+	// err = displacementsReduced.SolveVec(lapmat{K}, lapvec{forces})
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// displacements := lap.NewDenseVector(ga.TotalDofs(), nil)
+	// copied := lap.SliceExcludeVec(displacements, fixedDofs).CopyVec(&displacementsReduced)
+	// fmt.Println("displacements", copied, lap.Formatted(displacements))
 }
 
 type lapvec struct {

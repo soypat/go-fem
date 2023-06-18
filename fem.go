@@ -117,3 +117,26 @@ func (d DofsFlag) String() (s string) {
 	}
 	return s
 }
+
+// func ShapeFunQuadratures[V expmat.Vector, M expmat.Matrix](e Isoparametric) ([]V, []M) {
+// 	NdimsPerNode := len(e.BasisDiff(r3.Vec{})) / e.LenNodes()
+// 	Nnodes := e.LenNodes()
+// 	upg, _ := e.Quadrature()
+// 	shape := make([]V, len(upg))
+// 	shapeDiff := make([]M, len(upg))
+// 	for ipg, pos := range upg {
+// 		shapeDiff[ipg] = *new(M)
+// 		shape[ipg] = *new(V)
+// 		shape[ipg].ReuseAsVec(Nnodes)
+// 		shapeDiff[ipg].ReuseAs(NdimsPerNode, Nnodes)
+// 		N := e.Basis(pos)
+// 		dN := e.BasisDiff(pos)
+// 		for n := 0; n < Nnodes; n++ {
+// 			shape[ipg].SetVec(n, N[n])
+// 			for i := 0; i < NdimsPerNode; i++ {
+// 				shapeDiff[ipg].Set(i, n, dN[n*NdimsPerNode+i])
+// 			}
+// 		}
+// 	}
+// 	return shape, nil
+// }
