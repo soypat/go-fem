@@ -8,6 +8,7 @@ import (
 	"github.com/soypat/go-fem/constitution/solids"
 	"github.com/soypat/go-fem/elements"
 	"github.com/soypat/lap"
+	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
@@ -36,6 +37,42 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("K=\n%.3g\n", lap.Formatted(ga.Ksolid()))
+
+	var forces lap.Vector
+	forces = lap.NewDenseVector(ga.TotalDofs(), []float64{1.3750 * 1e3, 0 * 1e3, 1.7917 * 1e3, 0 * 1e3, 1.7917 * 1e3, 0 * 1e3, 1.3750 * 1e3, 0})
+	fixedDofs := []int{1}
+	forces = lap.SliceExcludeVec(forces, fixedDofs)
+
+	var K lap.Matrix
+	K = ga.Ksolid()
+	K = lap.SliceExclude(K, fixedDofs, fixedDofs)
+	var displacementsReduced mat.VecDense
+	err = displacementsReduced.SolveVec(lapmat{K}, lapvec{forces})
+	if err != nil {
+		log.Fatal(err)
+	}
+	displacements := lap.NewDenseVector(ga.TotalDofs(), nil)
+	copied := lap.SliceExcludeVec(displacements, fixedDofs).CopyVec(&displacementsReduced)
+	fmt.Println("displacements", copied, lap.Formatted(displacements))
+}
+
+type lapvec struct {
+	lap.Vector
+}
+
+func (v lapvec) T() mat.Matrix {
+	return lapmat{lap.T(v.Vector)}
+}
+
+type lapmat struct {
+	lap.Matrix
+}
+
+func (m lapmat) T() mat.Matrix {
+	if ter, ok := m.Matrix.(mat.Matrix); ok {
+		return ter.T()
+	}
+	return lapmat{lap.T(m.Matrix)}
 }
 
 //Output:

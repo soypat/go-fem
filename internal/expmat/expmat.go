@@ -3,6 +3,7 @@ package expmat
 import (
 	"fmt"
 
+	"github.com/soypat/lap"
 	"gonum.org/v1/gonum/mat"
 )
 
@@ -28,40 +29,24 @@ func BooleanSetVec(dst *mat.VecDense, src mat.Vector, inv bool, br []bool) {
 	}
 }
 
-func BooleanIndexing(m mat.Matrix, inv bool, br, bc []bool) *SubMat {
+func BooleanIndexing(m mat.Matrix, inv bool, br, bc []bool) lap.Matrix {
 	r, c := m.Dims()
 	if len(br) != r || len(bc) != c {
 		panic("bad dim")
 	}
-	sm := SubMat{
-		Rix: make([]int, 0, r),
-		Cix: make([]int, 0, c),
-		M:   m,
-	}
+	Rix := make([]int, 0, r)
+	Cix := make([]int, 0, c)
 	for i, b := range br {
 		if b != inv {
-			sm.Rix = append(sm.Rix, i)
+			Rix = append(Rix, i)
 		}
 	}
 	for i, b := range bc {
 		if b != inv {
-			sm.Cix = append(sm.Cix, i)
+			Cix = append(Cix, i)
 		}
 	}
-	return &sm
-}
-
-type SubMat struct {
-	Rix, Cix []int
-	M        mat.Matrix
-}
-
-func (bm *SubMat) At(i, j int) float64 { return bm.M.At(bm.Rix[i], bm.Cix[j]) }
-func (bm *SubMat) AtVec(i int) float64 { return bm.M.At(bm.Rix[i], 0) }
-func (bm *SubMat) Len() int            { return len(bm.Rix) }
-func (bm *SubMat) Dims() (int, int)    { return len(bm.Rix), len(bm.Cix) }
-func (bm *SubMat) T() mat.Matrix {
-	return mat.Transpose{Matrix: bm}
+	return lap.Slice(m, Rix, Cix)
 }
 
 func CopyBlocks(dst *mat.Dense, rows, cols int, src []mat.Matrix) error {

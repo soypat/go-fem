@@ -1,11 +1,5 @@
-github.com/soypat/lap v0.1.1 h1:OE+FEYw2/ZtJD8pCXO7a1wJlzar4ft4ZHnAcaCCdvrc=
-github.com/soypat/lap v0.1.1/go.mod h1:Mv9SjexDUzIRqqMUkec65PRWC0UZAGSthuW/3FVYYEM=
-github.com/soypat/lap v0.1.2-0.20230610164927-143be4a7c121 h1:AjMu6hO7Qwq1yotMGvJ9liYcv9DMHWqSLobvD3Y9kaw=
-github.com/soypat/lap v0.1.2-0.20230610164927-143be4a7c121/go.mod h1:Mv9SjexDUzIRqqMUkec65PRWC0UZAGSthuW/3FVYYEM=
-github.com/soypat/lap v0.1.2-0.20230610170642-4378f9c8aefd h1:1dcmgbhowZwOGtTTDR6Sl7kWGueurf3+ufOfOCS5+xE=
-github.com/soypat/lap v0.1.2-0.20230610170642-4378f9c8aefd/go.mod h1:Mv9SjexDUzIRqqMUkec65PRWC0UZAGSthuW/3FVYYEM=
-github.com/soypat/lap v0.1.2-0.20230610171400-8febbebfb49d h1:t+WpDs2NyXL8KbilkoHuzacUr4O/qvJBAd185wZ88FI=
-github.com/soypat/lap v0.1.2-0.20230610171400-8febbebfb49d/go.mod h1:Mv9SjexDUzIRqqMUkec65PRWC0UZAGSthuW/3FVYYEM=
+github.com/soypat/lap v0.1.2-0.20230618170401-8a1c2cb91d4a h1:anz4QbT47VwEr8JCHfDHOfC9v7fy/RxjDABWEs4J1ao=
+github.com/soypat/lap v0.1.2-0.20230618170401-8a1c2cb91d4a/go.mod h1:Mv9SjexDUzIRqqMUkec65PRWC0UZAGSthuW/3FVYYEM=
 github.com/soypat/manigold v0.0.0-20220614041313-be1a248c153a h1:iA5Eqpp79EssPZmsp1y6la7FvJkYlkZq6MYZmYRq/0g=
 github.com/soypat/manigold v0.0.0-20220614041313-be1a248c153a/go.mod h1:nPLT4UYxojCilnD+2v7ExgBN4LRMHkRZxjfl+uo6210=
 golang.org/x/exp v0.0.0-20191002040644-a1355ae1e2c3 h1:n9HxLrNxWWtEb1cA950nuEEj3QnKbtsCJ6KjcgisNUs=

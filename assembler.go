@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/soypat/go-fem/internal/expmat"
 	"github.com/soypat/lap"
 	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/spatial/r3"
@@ -31,6 +30,50 @@ func NewGeneralAssembler(nodes []r3.Vec, modelDofs DofsFlag) *GeneralAssembler {
 // Ksolid returns the stiffness matrix of the solid.
 func (ga *GeneralAssembler) Ksolid() *lap.Sparse { return &ga.ksolid }
 
+// TotalDofs returns the total number of dofs in the model.
+func (ga *GeneralAssembler) TotalDofs() int {
+	r, _ := ga.ksolid.Dims()
+	return r
+}
+
+type ElementInfo struct {
+	nodes []r3.Vec
+	dofs  [][]int
+}
+
+// Nodes returns the element's nodes in order of the element int slice used to create the ElementInfo.
+func (einfo ElementInfo) Nodes() []r3.Vec { return append([]r3.Vec{}, einfo.nodes...) }
+
+// Dofs returns the element's dofs:
+//   - The first index "n" is the node index.
+//   - The second index "d" is corresponds to the dth dof of the nth node.
+func (einfo ElementInfo) Dofs() [][]int {
+	return einfo.dofs
+}
+
+// ElementInfo returns the element's nodes and dofs in order of the element int slice.
+// The Dofs corresponde
+func (ga *GeneralAssembler) ElementInfo(elemT Element, element []int) (einfo ElementInfo, _ error) {
+	dofmapping, err := ga.DofMapping(elemT)
+	if err != nil {
+		return ElementInfo{}, err
+	}
+	// dofsPerNode := ga.dofs.Count()
+	modelDofs := ga.dofs.Count()
+	einfo.nodes = make([]r3.Vec, len(element))
+	backingDofs := make([]int, len(element)*elemT.Dofs().Count())
+	einfo.dofs = make([][]int, len(element))
+	storeElemDofs(backingDofs, element, dofmapping, modelDofs)
+	for i := range element {
+		if element[i] < 0 || element[i] >= len(ga.nodes) {
+			return ElementInfo{}, errors.New("element node index out of bounds")
+		}
+		einfo.nodes[i] = ga.nodes[element[i]]
+		einfo.dofs[i] = backingDofs[i*len(dofmapping) : (i+1)*len(dofmapping)]
+	}
+	return einfo, nil
+}
+
 // assembleElement stores the element stiffness matrix Ke into V data for the corresponding
 // I and J indices to the global stiffness matrix.
 func assembleElement(V []float64, I, J, elemDofs []int, Ke *mat.Dense) {
@@ -52,14 +95,16 @@ func assembleElement(V []float64, I, J, elemDofs []int, Ke *mat.Dense) {
 // dofs then an error is returned.
 // The length of the slice returned is equal to the amount of dofs per element node.
 func (ga *GeneralAssembler) DofMapping(e Element) ([]int, error) {
-	edofs := e.Dofs()
-	if !ga.dofs.Has(edofs) {
+	modelDofs := ga.dofs
+	numModelDofs := modelDofs.Count()
+	elemDofs := e.Dofs()
+	if !modelDofs.Has(elemDofs) {
 		return nil, fmt.Errorf("model dofs %s does not contain all element dofs %s", ga.dofs.String(), e.Dofs().String())
 	}
-	dofMapping := make([]int, edofs.Count())
+	dofMapping := make([]int, elemDofs.Count())
 	idm := 0
-	for i := 0; i < ga.dofs.Count(); i++ {
-		if ga.dofs.Has(1<<i) && edofs.Has(1<<i) {
+	for i := 0; i < numModelDofs; i++ {
+		if modelDofs.Has(1<<i) && elemDofs.Has(1<<i) {
 			dofMapping[idm] = i
 			idm++
 		}
@@ -133,14 +178,10 @@ func (ga *GeneralAssembler) AddElement3(elemT Element3, c Constituter, Nelem int
 		panic("AddElement3 currently only handles 6 rigid body motion degrees of freedom")
 	}
 	var T3 r3.Mat
-	var rotator mat.Matrix = &expmat.SubMat{
-		Rix: dofMapping,
-		Cix: dofMapping,
-		M: blkDiag{
-			rep: 2 * NnodPerElem,
-			m:   &T3,
-		},
-	}
+	rotator := lapmat{lap.Slice(blkDiag{
+		rep: 2 * NnodPerElem,
+		m:   &T3,
+	}, dofMapping, dofMapping)}
 
 	Ke := mat.NewDense(NdofPerElem, NdofPerElem, nil)
 	elemNodes := make([]r3.Vec, NnodPerElem)
@@ -219,5 +260,18 @@ func (b blkDiag) T() mat.Matrix {
 	return blkDiag{
 		rep: b.rep,
 		m:   b.m.T(),
+	}
+}
+
+type lapmat struct {
+	lap.Matrix
+}
+
+func (l lapmat) T() mat.Matrix {
+	if ter, ok := l.Matrix.(mat.Transpose); ok {
+		return ter.T()
+	}
+	return lapmat{
+		Matrix: lap.T(l.Matrix),
 	}
 }
