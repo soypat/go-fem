@@ -14,7 +14,7 @@ type Element interface {
 	Dofs() DofsFlag
 }
 
-// Isoparametric is a 3D element that employs the isoparametric formulation.
+// Isoparametric is a 3D/2D/1D element that employs the isoparametric formulation.
 type Isoparametric interface {
 	Element
 	// BasisNodes returns the positions of the nodes relative to the origin

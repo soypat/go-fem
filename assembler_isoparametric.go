@@ -117,3 +117,63 @@ func (ga *GeneralAssembler) AddIsoparametric(elemT Isoparametric, c IsoConstitut
 	ga.ksolid.Accumulate(spac)
 	return nil
 }
+
+type quadratureCallback = func(elemIdx int, Npg []*mat.VecDense, dNpg []*mat.Dense, elemNodes *mat.Dense, elemDofs []int) error
+
+// AddIsoparametric adds isoparametric elements to the model's solid stiffness matrix.
+// It calls getElement to get the element nodes and coordinates Nelem times, each with
+// an incrementing element index i.
+//
+// Arbitrary orientation of solid properties for each isoparametric element is not yet implemented.
+func (ga *GeneralAssembler) IntegrateIsoparametric(elemT Isoparametric, Nelem int, getElement func(i int) (elem []int, xC, yC r3.Vec), quadCB quadratureCallback) error {
+	if elemT == nil || getElement == nil {
+		panic("nil argument to AddIsoparametric2") // This is very likely programmer error.
+	}
+	dofMapping, err := ga.DofMapping(elemT)
+	if err != nil {
+		return err
+	}
+	var (
+		// Number of integration dimensions per node. Usually spatial, so 2 for 2D problems and 3 for 3D problems.
+		NdimsPerNode = len(elemT.BasisDiff(r3.Vec{})) / elemT.LenNodes()
+		// Number of nodes per element.
+		NnodperElem = elemT.LenNodes()
+		// Differentiated form functions with respect to the integration coordinates.
+		// dNxy = mat.NewDense(NdimsPerNode, NnodperElem, nil)
+		// Number of dofs per node in model.
+		NmodelDofsPerNode = ga.dofs.Count()
+		// Quadrature integration points.
+		upg, wpg = elemT.Quadrature()
+	)
+	if len(upg) == 0 || len(upg) != len(wpg) {
+		return fmt.Errorf("bad quadrature result from isoparametric element")
+	}
+	// Calculate form functions evaluated at integration points.
+	Npg := make([]*mat.VecDense, len(upg))
+	dNpg := make([]*mat.Dense, len(upg))
+	for ipg, pg := range upg {
+		Npg[ipg] = mat.NewVecDense(NnodperElem, elemT.Basis(pg))
+		dNpg[ipg] = mat.NewDense(NdimsPerNode, NnodperElem, elemT.BasisDiff(pg))
+	}
+	// Allocate memory for auxiliary matrices.
+	// jac := mat.NewDense(NdimsPerNode, NdimsPerNode, nil)
+	elemNodBacking := make([]float64, NdimsPerNode*NnodperElem)
+	elemDofs := make([]int, NmodelDofsPerNode*NnodperElem)
+	elemNod := mat.NewDense(NnodperElem, NdimsPerNode, elemNodBacking)
+	for iele := 0; iele < Nelem; iele++ {
+		element, x, y := getElement(iele)
+		if len(element) != NnodperElem {
+			return fmt.Errorf("element #%d of %d nodes expected to be of %d nodes", iele, len(element), NnodperElem)
+		}
+		if x != (r3.Vec{}) || y != (r3.Vec{}) {
+			return fmt.Errorf("arbitrary constitutive orientation not implemented yet")
+		}
+		storeElemNode(elemNodBacking, ga.nodes, element, NdimsPerNode)
+		storeElemDofs(elemDofs, element, dofMapping, NmodelDofsPerNode)
+		err := quadCB(iele, Npg, dNpg, elemNod, elemDofs)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
