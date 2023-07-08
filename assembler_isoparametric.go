@@ -10,41 +10,14 @@ import (
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
-type quadratureCallback = func(elemIdx int, elemNodes []float64, elemDofs []int) error
+type elementDofCallback = func(elemIdx int, elemNodes []float64, elemDofs []int) error
 
 // IntegrateIsoparametric is a general purpose for-each isoparametric element iterator.
-func (ga *GeneralAssembler) ForEachElement(elemT Element, spatialDimsPerNode, Nelem int, getElement func(i int) []int, quadCB quadratureCallback) error {
-	if elemT == nil || getElement == nil || quadCB == nil {
-		panic("nil argument to AddIsoparametric2") // This is very likely programmer error.
-	} else if spatialDimsPerNode < 1 || spatialDimsPerNode > 3 {
-		panic("dimsPerNode must be 1, 2 or 3")
-	}
-	dofMapping, err := ga.DofMapping(elemT)
-	if err != nil {
-		return err
-	}
-	var (
-		// Number of nodes per element.
-		NnodperElem = elemT.LenNodes()
-		// Number of dofs per node in model.
-		NmodelDofsPerNode = ga.dofs.Count()
-	)
-
-	elemNodBacking := make([]float64, spatialDimsPerNode*NnodperElem)
-	elemDofs := make([]int, NmodelDofsPerNode*NnodperElem)
-	for iele := 0; iele < Nelem; iele++ {
-		element := getElement(iele)
-		if len(element) != NnodperElem {
-			return fmt.Errorf("element #%d of %d nodes expected to be of %d nodes", iele, len(element), NnodperElem)
-		}
-		storeElemNode(elemNodBacking, ga.nodes, element, spatialDimsPerNode)
-		storeElemDofs(elemDofs, element, dofMapping, NmodelDofsPerNode)
-		err := quadCB(iele, elemNodBacking, elemDofs)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+// This function iterates over Nelem elements of type elemT, calling getElement to get the
+// element nodes indices. These are then used to get the element's nodes and dofs
+// which are passed in the elemCallback function.
+func (ga *GeneralAssembler) ForEachElement(elemT Element, spatialDimsPerNode, Nelem int, getElement func(i int) []int, elemCallback elementDofCallback) error {
+	return forEachElement(ga.dofs, ga.nodes, elemT, spatialDimsPerNode, Nelem, getElement, elemCallback)
 }
 
 // AddIsoparametric adds isoparametric elements to the model's solid stiffness matrix.

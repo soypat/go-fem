@@ -1,6 +1,8 @@
 package fem
 
 import (
+	"errors"
+	"fmt"
 	"math/bits"
 	"strconv"
 
@@ -113,6 +115,60 @@ func (d DofsFlag) String() (s string) {
 		d = d >> 1
 	}
 	return s
+}
+
+func forEachElement(modelDofs DofsFlag, nodes []r3.Vec, elemT Element, spatialDimsPerNode, Nelem int, getElement func(i int) []int, elemCallback elementDofCallback) error {
+	if elemT == nil || getElement == nil || elemCallback == nil {
+		panic("nil argument to AddIsoparametric2") // This is very likely programmer error.
+	} else if spatialDimsPerNode < 1 || spatialDimsPerNode > 3 {
+		return errors.New("dimsPerNode must be 1, 2 or 3")
+	}
+
+	dofMapping, err := mapdofs(modelDofs, elemT.Dofs())
+	if err != nil {
+		return err
+	}
+	var (
+		// Number of nodes per element.
+		NnodperElem = elemT.LenNodes()
+		// Number of dofs per node in model.
+		NmodelDofsPerNode = modelDofs.Count()
+	)
+
+	elemNodBacking := make([]float64, spatialDimsPerNode*NnodperElem)
+	elemDofs := make([]int, NmodelDofsPerNode*NnodperElem)
+	for iele := 0; iele < Nelem; iele++ {
+		element := getElement(iele)
+		if len(element) != NnodperElem {
+			return fmt.Errorf("element #%d of %d nodes expected to be of %d nodes", iele, len(element), NnodperElem)
+		}
+		storeElemNode(elemNodBacking, nodes, element, spatialDimsPerNode)
+		storeElemDofs(elemDofs, element, dofMapping, NmodelDofsPerNode)
+		err := elemCallback(iele, elemNodBacking, elemDofs)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func mapdofs(modelDofs, elemDofs DofsFlag) (dofs []int, err error) {
+	numModelDofs := modelDofs.Count()
+	if !modelDofs.Has(elemDofs) {
+		return nil, fmt.Errorf("model dofs %s does not contain all element dofs %s", modelDofs.String(), elemDofs.String())
+	}
+	dofMapping := make([]int, elemDofs.Count())
+	idm := 0
+	for i := 0; i < numModelDofs; i++ {
+		if modelDofs.Has(1<<i) && elemDofs.Has(1<<i) {
+			dofMapping[idm] = i
+			idm++
+		}
+	}
+	if idm == 0 || len(dofMapping) == 0 {
+		return nil, errors.New("element has empty dof mapping")
+	}
+	return dofMapping, nil
 }
 
 // func ShapeFunQuadratures[V expmat.Vector, M expmat.Matrix](e Isoparametric) ([]V, []M) {
