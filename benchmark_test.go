@@ -49,3 +49,8 @@ func BenchmarkTetra4Assembly(b *testing.B) {
 		})
 	}
 }
+
+// var (
+// 	_benchDiv               = 16.0
+// 	benchNodes, benchTetras = tetra.MakeBCC(r3.Box{Max: r3.Vec{X: 1, Y: 1, Z: 1}}, 1.0/_benchDiv).MeshTetraBCC()
+// )
