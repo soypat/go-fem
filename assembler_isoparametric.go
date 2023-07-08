@@ -1,6 +1,7 @@
 package fem
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -12,45 +13,31 @@ import (
 type quadratureCallback = func(elemIdx int, elemNodes []float64, elemDofs []int) error
 
 // IntegrateIsoparametric is a general purpose for-each isoparametric element iterator.
-func (ga *GeneralAssembler) ForEachIsoparametric(elemT Isoparametric, Nelem int, getElement func(i int) (elem []int, xC, yC r3.Vec), quadCB quadratureCallback) error {
+func (ga *GeneralAssembler) ForEachElement(elemT Element, spatialDimsPerNode, Nelem int, getElement func(i int) []int, quadCB quadratureCallback) error {
 	if elemT == nil || getElement == nil || quadCB == nil {
 		panic("nil argument to AddIsoparametric2") // This is very likely programmer error.
+	} else if spatialDimsPerNode < 1 || spatialDimsPerNode > 3 {
+		panic("dimsPerNode must be 1, 2 or 3")
 	}
 	dofMapping, err := ga.DofMapping(elemT)
 	if err != nil {
 		return err
 	}
 	var (
-		// Number of integration dimensions per node. Usually spatial, so 2 for 2D problems and 3 for 3D problems.
-		NdimsPerNode = len(elemT.BasisDiff(r3.Vec{})) / elemT.LenNodes()
 		// Number of nodes per element.
 		NnodperElem = elemT.LenNodes()
-		// Differentiated form functions with respect to the integration coordinates.
-		// dNxy = mat.NewDense(NdimsPerNode, NnodperElem, nil)
 		// Number of dofs per node in model.
 		NmodelDofsPerNode = ga.dofs.Count()
-		// Quadrature integration points.
-		upg, wpg = elemT.Quadrature()
 	)
-	if len(upg) == 0 || len(upg) != len(wpg) {
-		return fmt.Errorf("bad quadrature result from isoparametric element")
-	}
-	// Calculate form functions evaluated at integration points.
 
-	// Allocate memory for auxiliary matrices.
-	// jac := mat.NewDense(NdimsPerNode, NdimsPerNode, nil)
-	elemNodBacking := make([]float64, NdimsPerNode*NnodperElem)
+	elemNodBacking := make([]float64, spatialDimsPerNode*NnodperElem)
 	elemDofs := make([]int, NmodelDofsPerNode*NnodperElem)
-
 	for iele := 0; iele < Nelem; iele++ {
-		element, x, y := getElement(iele)
+		element := getElement(iele)
 		if len(element) != NnodperElem {
 			return fmt.Errorf("element #%d of %d nodes expected to be of %d nodes", iele, len(element), NnodperElem)
 		}
-		if x != (r3.Vec{}) || y != (r3.Vec{}) {
-			return fmt.Errorf("arbitrary constitutive orientation not implemented yet")
-		}
-		storeElemNode(elemNodBacking, ga.nodes, element, NdimsPerNode)
+		storeElemNode(elemNodBacking, ga.nodes, element, spatialDimsPerNode)
 		storeElemDofs(elemDofs, element, dofMapping, NmodelDofsPerNode)
 		err := quadCB(iele, elemNodBacking, elemDofs)
 		if err != nil {
@@ -117,8 +104,15 @@ func (ga *GeneralAssembler) AddIsoparametric(elemT Isoparametric, c IsoConstitut
 
 	NvalPerElem := NdofperElem * NdofperElem
 	spac := lap.NewSparseAccum(NvalPerElem * Nelem)
-
-	err = ga.ForEachIsoparametric(elemT, Nelem, getElement, func(iele int, elemNodBacking []float64, elemDofs []int) error {
+	var x, y r3.Vec
+	subGetElement := func(i int) (elem []int) {
+		elem, x, y = getElement(i)
+		return elem
+	}
+	err = ga.ForEachElement(elemT, NdimsPerNode, Nelem, subGetElement, func(iele int, elemNodBacking []float64, elemDofs []int) error {
+		if x != (r3.Vec{}) || y != (r3.Vec{}) {
+			return errors.New("arbitrary constitutive orientation not implemented yet")
+		}
 		Ke.Zero()
 		elemNod := mat.NewDense(NnodperElem, NdimsPerNode, elemNodBacking)
 		for ipg := range upg {

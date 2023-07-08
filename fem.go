@@ -1,6 +1,7 @@
 package fem
 
 import (
+	"math/bits"
 	"strconv"
 
 	"gonum.org/v1/gonum/mat"
@@ -89,11 +90,7 @@ const (
 
 // Count returns the number of dofs set in d.
 func (d DofsFlag) Count() int {
-	c := 0
-	for i := 0; i < maxDofsPerNode; i++ {
-		c += int(d>>i) & 1
-	}
-	return c
+	return bits.OnesCount16(uint16(d))
 }
 
 // Has returns true if d has all of q's dofs set. It returns false if
