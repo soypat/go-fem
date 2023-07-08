@@ -171,6 +171,66 @@ func mapdofs(modelDofs, elemDofs DofsFlag) (dofs []int, err error) {
 	return dofMapping, nil
 }
 
+// NewFixity returns a new Fixity with the given modelDofs and number of nodes.
+func NewFixity(modelDofs DofsFlag, numNodes int) Fixity {
+	return Fixity{
+		nodes:     make([]DofsFlag, numNodes),
+		modelDofs: modelDofs,
+	}
+}
+
+// Fixity holds information for the fixed degrees of freedom per node.
+// It assumes constant number of dofs per node.
+type Fixity struct {
+	nodes     []DofsFlag
+	modelDofs DofsFlag
+}
+
+// Fix sets the fixed dofs for the given node. It ignores dofs that are not in the model.
+func (f Fixity) Fix(nodeIdx int, fixed DofsFlag) {
+	f.nodes[nodeIdx] |= (fixed & f.modelDofs)
+}
+
+// Free sets the free dofs for the given node. It ignores dofs that are not in the model.
+func (f Fixity) Free(nodeIdx int, freed DofsFlag) {
+	f.nodes[nodeIdx] &^= (freed & f.modelDofs)
+}
+
+// FreeDofs returns the free dof indices.
+// This should be used to set the free dofs in the global stiffness matrix using
+// lap.Slice or similar slicing functions.
+func (f Fixity) FreeDofs() []int {
+	return f.fixity(false)
+}
+
+// FixedDofs returns the fixed dof indices.
+// This should be used to set the free dofs in the global stiffness matrix using
+// lap.Slice or similar slicing functions.
+func (f Fixity) FixedDofs() []int {
+	return f.fixity(true)
+}
+
+func (f Fixity) fixity(getFixed bool) []int {
+	dofsPerNode := f.modelDofs.Count()
+	var dofIdx []int
+	for i := 0; i < 16; i++ {
+		if f.modelDofs&(1<<i) != 0 {
+			dofIdx = append(dofIdx, i)
+		}
+	}
+	indices := make([]int, 0, len(f.nodes)*dofsPerNode/2)
+	for i, n := range f.nodes {
+		for j, dof := range dofIdx {
+			dofIsFixed := n&(1<<dof) != 0
+			showDof := getFixed == dofIsFixed
+			if showDof {
+				indices = append(indices, i*dofsPerNode+j)
+			}
+		}
+	}
+	return indices
+}
+
 // func ShapeFunQuadratures[V expmat.Vector, M expmat.Matrix](e Isoparametric) ([]V, []M) {
 // 	NdimsPerNode := len(e.BasisDiff(r3.Vec{})) / e.LenNodes()
 // 	Nnodes := e.LenNodes()

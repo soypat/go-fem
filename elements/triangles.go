@@ -157,7 +157,7 @@ func (Triangle6) area() float64 { return 0.5 }
 
 func getTriangleQuads(order int) (nodes []r3.Vec, weights []float64) {
 	if order < 1 {
-		panic("bad quadrature order; bug in go-fem")
+		panic("bad triangle quadrature order")
 	}
 	if order > len(triangleQuads) {
 		panic("triangle quadrature order not implemented")
