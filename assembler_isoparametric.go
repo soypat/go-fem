@@ -173,8 +173,7 @@ func (ga *GeneralAssembler) IsoparametricStrains(displacements lap.Vector, elemT
 	}
 	// Allocate memory for auxiliary matrices.
 	jac := mat.NewDense(NdimsPerNode, NdimsPerNode, nil)
-	// pgStrain := lap.NewDenseMatrix(dimC, len(upg), nil)
-	pgStrain := mat.NewDense(dimC, len(upg), nil)
+	pgStrain := mat.NewDense(len(upg), dimC, nil)
 
 	var x, y r3.Vec
 	subGetElement := func(i int) (elem []int) {

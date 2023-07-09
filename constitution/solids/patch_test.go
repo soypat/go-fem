@@ -57,10 +57,10 @@ func TestAxisymmetricPatchTest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	displacements := lap.NewDenseVector(ga.TotalDofs(), nil)
-	fix := fem.NewFixity(fem.DofPosX|fem.DofPosY, len(nodes))
 
 	t.Run("Case 1", func(t *testing.T) {
+		displacements := lap.NewDenseVector(ga.TotalDofs(), nil)
+		fix := fem.NewFixity(fem.DofPosX|fem.DofPosY, len(nodes))
 		// Displacement loads for case 1.
 		for i, node := range nodes {
 			isTopNode := node.Y == ly
@@ -103,6 +103,8 @@ func TestAxisymmetricPatchTest(t *testing.T) {
 
 	// Case 2: Displacement loads for case 2.
 	t.Run("Case 2", func(t *testing.T) {
+		displacements := lap.NewDenseVector(ga.TotalDofs(), nil)
+		fix := fem.NewFixity(fem.DofPosX|fem.DofPosY, len(nodes))
 		// Displacement loads for case 1.
 		for i, node := range nodes {
 			isTopNode := node.Y == ly
@@ -151,6 +153,96 @@ func TestAxisymmetricPatchTest(t *testing.T) {
 				}
 			}
 		})
+	})
+}
+
+// See [1.5.4] Patch test for axisymmetric elements.
+//
+// [1.5.4]: https://classes.engineering.wustl.edu/2009/spring/mase5513/abaqus/docs/v6.5/books/ver/default.htm
+func TestAxisymmetricThermalPatchTest(t *testing.T) {
+	const (
+		// Washer dimensions. ri=internal radius; lx=washer radial width; ly=washer height.
+		ri, lx, ly                 = 1, 0.24, 0.12
+		relativeError              = 1e-2 // 3% relative error max permissible.
+		topTemp                    = 100
+		bottomTemp                 = 0
+		dofTemp       fem.DofsFlag = 1
+	)
+	rng := rand.New(rand.NewSource(1))
+	randf := func() float64 { return rng.Float64() }
+
+	nodes := []r3.Vec{
+		{X: ri, Y: 0},
+		{X: ri + lx, Y: 0},
+		{X: ri + lx, Y: ly},
+		{X: ri, Y: ly},
+		// Internal nodes for the washer.
+		{X: ri + lx/3 + (randf()-0.5)*lx/4, Y: ly/3 + (randf()-0.5)*ly/4},
+		{X: ri + lx*2/3 - (randf()-0.5)*lx/4, Y: ly/3 + (randf()-0.5)*ly/4},
+		{X: ri + lx*2/3 - (randf()-0.5)*lx/4, Y: ly*2/3 - (randf()-0.5)*ly/4},
+		{X: ri + lx/3 + (randf()-0.5)*lx/4, Y: ly*2/3 - (randf()-0.5)*ly/4},
+	}
+
+	// Create a patch with 4 nodes and 2 elements.
+	q4elems := [][4]int{
+		{0, 1, 5, 4},
+		{1, 2, 6, 5},
+		{6, 2, 3, 7},
+		{0, 4, 7, 3},
+		{4, 5, 6, 7},
+	}
+
+	getelementR3 := func(i int) (elem []int, xC r3.Vec, yC r3.Vec) { return q4elems[i][:], r3.Vec{}, r3.Vec{} }
+	material := solids.IsotropicConductivity{K: 1.0}
+	elemtype := elements.Quad4{NodeDofs: dofTemp}
+	ga := fem.NewGeneralAssembler(nodes, dofTemp)
+	err := ga.AddIsoparametric(elemtype, material.Axisymmetric(), len(q4elems), getelementR3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("Case 1", func(t *testing.T) {
+		temperatures := lap.NewDenseVector(ga.TotalDofs(), nil)
+		adiabatic := fem.NewFixity(fem.DofPosX, len(nodes))
+		// Displacement loads for case 1.
+		for i, node := range nodes {
+			isTopNode := node.Y == ly
+			isBottomNode := node.Y == 0
+			if isTopNode {
+				temperatures.SetVec(i, topTemp)
+				adiabatic.Fix(i, dofTemp)
+			} else if isBottomNode {
+				temperatures.SetVec(i, bottomTemp)
+				adiabatic.Fix(i, dofTemp)
+			}
+		}
+		free := adiabatic.FreeDofs()
+		fixed := adiabatic.FixedDofs()
+		loadsFromDispl := lap.NewDenseVector(len(free), nil)
+		loadsFromDispl.MulVec(lap.Slice(ga.Ksolid(), free, fixed), lap.SliceVec(temperatures, fixed))
+
+		// 0 imposed initial imposed loads.  K(free,free)\(R(free)-K(free,fix)*D(fix))
+		imposedLoads := lap.NewDenseVector(len(free), nil)
+		imposedLoads.SubVec(imposedLoads, loadsFromDispl)
+
+		resultDisplacements := mat.NewVecDense(len(free), nil)
+		err = resultDisplacements.SolveVec(lapmat{lap.Slice(ga.Ksolid(), free, free)}, lapvec{imposedLoads})
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Extract the solution to obtain all displacements, both fixed and free.
+		lap.SliceVec(temperatures, free).CopyVec(resultDisplacements)
+		// Compute Reaction forces.
+		forces := lap.NewDenseVector(ga.TotalDofs(), nil)
+		forces.MulVec(ga.Ksolid(), temperatures)
+
+		for i, node := range nodes {
+			temp := temperatures.AtVec(i)
+			expectedTemp := topTemp * node.Y / ly
+			if math.Abs(temp-expectedTemp)/(expectedTemp+1e-2) > relativeError {
+				t.Errorf("expected temperature at node %d to be %g got %g", i, expectedTemp, temp)
+			}
+		}
 	})
 }
 
